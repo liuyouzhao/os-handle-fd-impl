@@ -14,19 +14,19 @@ struct queue {
 };
 
 // Function to create a new node
-struct node* create_node(int data);
+struct node* queue_create_node(int data);
 
 // Function to create an empty queue
-struct queue* create_queue();
+struct queue* queue_create_queue();
 
 // Function to add an element to the queue
-void enqueue(struct queue* queue, int data);
+void queue_enqueue(struct queue* queue, int data);
 
 // Function to remove an element from the queue
-int dequeue(struct queue* queue);
+int queue_dequeue(struct queue* queue);
 
 // Function to display the queue
-void display_queue(struct queue* queue);
+void queue_display_queue(struct queue* queue);
 
 
 #endif // QUEUE_H

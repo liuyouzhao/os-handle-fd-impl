@@ -2,21 +2,21 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-struct node* create_node(int data) {
+struct node* queue_create_node(int data) {
     struct node* new_node = (struct node*)malloc(sizeof(struct node));
     new_node->data = data;
     new_node->next = NULL;
     return new_node;
 }
 
-struct queue* create_queue() {
+struct queue* queue_create_queue() {
     struct queue* queue = (struct queue*)malloc(sizeof(struct queue));
     queue->front = queue->rear = NULL;
     return queue;
 }
 
-void enqueue(struct queue* queue, int data) {
-    struct node* new_node = create_node(data);
+void queue_enqueue(struct queue* queue, int data) {
+    struct node* new_node = queue_create_node(data);
     if (queue->rear == NULL) {
         queue->front = queue->rear = new_node;
         return;
@@ -25,7 +25,7 @@ void enqueue(struct queue* queue, int data) {
     queue->rear = new_node;
 }
 
-int dequeue(struct queue* queue) {
+int queue_dequeue(struct queue* queue) {
     if (queue->front == NULL) {
         printf("Queue is empty\n");
         return -1;
@@ -40,7 +40,7 @@ int dequeue(struct queue* queue) {
     return data;
 }
 
-void display_queue(struct queue* queue) {
+void queue_display_queue(struct queue* queue) {
     struct node* temp = queue->front;
     while (temp != NULL) {
         printf("%d ", temp->data);
