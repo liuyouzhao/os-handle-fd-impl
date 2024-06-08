@@ -21,7 +21,31 @@ int vfs_sys_init() {
     return 0;
 }
 
-int vfs_file_ref_create(const char* path, vfs_file_t** output) {
+/**
+ * [PURE] check path length limit
+ *
+ * <UNSAFE_BEGIN>
+ * vfs_file_search
+ * <UNSAFE_END>
+ *
+ * <--- create/close concurrent intervenes
+ *
+ * Found:======================
+ * return file;
+ *
+ * <--- create/close concurrent intervenes
+ *
+ * Not Found: =================
+ *
+ * [PURE] alloc new file
+ *
+ * <HASH_KEY_LOCK>
+ * vfs_file_search (double lookup) NOT exist, or free and return
+ * insert hashmap
+ * <HASH_KEY_UNLOCK>
+ * return file
+ */
+int vfs_file_get_or_create(const char* path, vfs_file_t** output, int create) {
 
     vfs_file_t* ptr_file = NULL;
 
@@ -33,12 +57,13 @@ int vfs_file_ref_create(const char* path, vfs_file_t** output) {
 
     ptr_file = vfs_file_search(path);
 
-    /// search the file by path
+    /// found
     if(ptr_file) {
-        /// found
-        atomic_inc(&(ptr_file->f_ref_count));
         *output = ptr_file;
         return 0;
+    }
+    else if(!create) {
+        return -1;
     }
 
     /// create new file
@@ -67,17 +92,38 @@ int vfs_file_ref_create(const char* path, vfs_file_t** output) {
     return 0;
 }
 
+/// TODO: Optimize sys_lock to hash_index_lock to enhance concurrency
+/// Normally O(1) operations. Hash collision can cause at worst O(n).
+/// Using Optimized Tree-Redistribution Hash, the worst case O(logn)
 vfs_file_t* vfs_file_search(const char* path) {
     vfs_file_t* file = NULL;
-
-    arch_spin_lock(&(__vfs_sys->sys_lock));
     hash_map_get(__vfs_sys->p_files_map, path, &file);
-    arch_spin_unlock(&(__vfs_sys->sys_lock));
-
     return file;
 }
 
-int vfs_file_delete(const char* path, vfs_file_t** output) {
+/**
+ * <UNSAFE_BEGIN>
+ * vfs_file_search
+ * <UNSAFE_END>
+ *
+ * <--- create/close concurrent intervenes
+ *
+ * Not Found: =================
+ * return -1
+ *
+ *
+ * Found:======================
+ * <FILE_W_LOCK>
+ * check still valid==1 (double lookup) or return
+ * Release all pointers
+ * valid=0
+ * <FILE_W_UNLOCK>
+ *
+ * <HASH_KEY_LOCK>
+ * hash_map_remove (No need double check because remove itself will check)
+ * <HASH_KEY_UNLOCK>
+ */
+int vfs_file_delete(const char* path) {
     /// Not implemented, out of scope.
 }
 

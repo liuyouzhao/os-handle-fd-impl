@@ -31,6 +31,8 @@ typedef struct vfs_file_s {
     arch_rw_lock_t f_rw_lock;
     unsigned long f_len;
     void* private_data;
+    short valid;
+
 } vfs_file_t;
 
 /**
@@ -49,8 +51,8 @@ typedef struct vfs_sys_s {
 
 int vfs_sys_init();
 
-int vfs_file_ref_create(const char* path, vfs_file_t** output);
-int vfs_file_delete(const char* path, vfs_file_t** output);
+int vfs_file_get_or_create(const char* path, vfs_file_t** output, int create);
+int vfs_file_delete(const char* path);
 vfs_file_t* vfs_file_search(const char* path);
 int vfs_files_hash_dump();
 int vfs_files_list_dump();

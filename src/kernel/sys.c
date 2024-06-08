@@ -39,14 +39,31 @@ static vfs_handle_t* __search_handle(tsk_id_t tid, int fd) {
 }
 
 /**
- * 1. Get the task pointer
- * 2. Check if open fds reached limitation
- * 3. Search/Create file* by filename
- * 3.1 if mode == RW call vfs_file_search
- * 3.2 if mode == RW_CREATE call vfs_file_ref_create
- * 5. [Pure] alloc new vfs_handle*
- * 6. [Atomic] store vfs_handle* into vfs_handle_bucket_t
- * 7. return vfs_handle->fd as a number(int)
+ * TODO: Opimize GLOBAL_LOCK to HASH_INDEX_LOCK
+ *
+ * <TSK_ISSOLATION_BEGIN>
+ * Get the task pointer
+ * Check return if fds limitation
+ * <TSK_ISSOLATION_END>
+ *
+ * <GLOBAL_LOCK>
+ * vfs_file_search search by path
+ * <GLOBAL_UNLOCK>
+ *
+ * <FILE_LOCK>
+ * vfs_file_ref_create if RW_CREATE and not exist
+ * <FILE_UNLOCK>
+ *
+ * <TSK_ISSOLATION_BEGIN>
+ * Alloc new vfs_handle*
+ * Retrieve fd from recycle or generate new fd.
+ * Calculate idx_bucket, idx_handle by nfd
+ * Save vfs_handle* to vfs_handle_bucket_t by idx_bucket, idx_handle
+ * <TSK_ISSOLATION_END>
+ *
+ * [FILE_ATOMIC] file->f_ref_count ++
+ *
+ * 8. return fd
  */
 int sys_open(tsk_id_t tid, const char* path, unsigned int mode) {
     int i1 = -1;
@@ -84,7 +101,7 @@ int sys_open(tsk_id_t tid, const char* path, unsigned int mode) {
     atomic_set(&(ptr_handle->read_pos), 0);
 
     /// No free() needed. vfs_file_ref_create guarantee the mem collect.
-    if(vfs_file_ref_create(path, &file)) {
+    if(vfs_file_get_or_create(path, &file, mode)) {
         atomic_set(&(ptr_handle->valid), 0);
         return -1;
     }
