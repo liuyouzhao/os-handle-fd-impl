@@ -1,4 +1,7 @@
 #include "arch.h"
+#include <pthread.h>
+#include <stdlib.h>
+#include <signal.h>
 
 int arch_spin_lock_init(arch_lock_t* lock) {
     return pthread_mutex_init(&(lock->_mutex), NULL);
@@ -23,4 +26,53 @@ int arch_spin_lock(arch_lock_t* lock) {
 
 int arch_spin_unlock(arch_lock_t* lock) {
     return pthread_mutex_unlock(&(lock->_mutex));
+}
+
+
+int arch_rw_lock_init(arch_rw_lock_t* rw_lock) {
+    int rt = pthread_rwlock_init(&(rw_lock->_rw_mutex), NULL);
+    if(rt) {
+        return rt;
+    }
+    rt = pthread_mutex_init(&(rw_lock->_mutex), NULL);
+    return rt;
+}
+
+int arch_rw_lock_destroy(arch_rw_lock_t* rw_lock) {
+    pthread_rwlock_destroy(&(rw_lock->_rw_mutex));
+    pthread_mutex_destroy(&(rw_lock->_mutex));
+}
+
+int arch_rw_lock_r(arch_rw_lock_t* rw_lock) {
+    pthread_rwlock_rdlock(&(rw_lock->_rw_mutex));
+}
+
+int arch_rw_lock_w(arch_rw_lock_t* rw_lock) {
+    pthread_mutex_lock(&(rw_lock->_mutex));
+    pthread_rwlock_wrlock(&(rw_lock->_rw_mutex));
+}
+
+int arch_rw_unlock_r(arch_rw_lock_t* rw_lock) {
+    pthread_rwlock_unlock(&(rw_lock->_rw_mutex));
+}
+
+int arch_rw_unlock_w(arch_rw_lock_t* rw_lock) {
+    pthread_rwlock_unlock(&(rw_lock->_rw_mutex));
+    pthread_mutex_unlock(&(rw_lock->_mutex));
+}
+
+int arch_task_create(void *(*func)(void*), unsigned long* private_tid, unsigned long tid) {
+    return pthread_create(private_tid, NULL, func, (void*)tid);
+}
+
+unsigned long arch_task_get_private_tid() {
+    return pthread_self();
+}
+
+void arch_signal_kill() {
+    pthread_kill(pthread_self(), SIGUSR1);
+}
+
+void arch_panic() {
+    exit(-1);
 }
