@@ -3,9 +3,14 @@
 #include "hash.h"
 #include "sys.h"
 #include "vfs.h"
+#include "test_def.h"
 
 void test_file_create_success() {
+__TST_START__
+
+    int i = 0;
     vfs_file_t *file = NULL;
+    vfs_file_t *file_dup = NULL;
     int rt = vfs_file_ref_create("/dev/test/testdev", &file);
 
     assert(rt == 0);
@@ -13,4 +18,44 @@ void test_file_create_success() {
     assert(1 == atomic_read(&(file->f_ref_count)));
     assert(strcmp("/dev/test/testdev", file->path) == 0);
     assert(file->private_data != NULL);
+
+    /// reopen - 1
+    rt = vfs_file_ref_create("/dev/test/testdev", &file_dup);
+
+    vfs_files_list_dump();
+
+    assert(rt == 0);
+    assert(file_dup == file);
+    assert(file_dup->private_data == file->private_data);
+    assert(file_dup->f_len == file->f_len);
+    assert(2 == __DL(atomic_read(&(file_dup->f_ref_count))));
+    assert(2 == atomic_read(&(file->f_ref_count)));
+    assert(&(file->f_rw_lock._mutex) == &(file_dup->f_rw_lock._mutex));
+    assert(&(file->f_rw_lock._rw_mutex) == &(file_dup->f_rw_lock._rw_mutex));
+
+    /// reopen - 2
+    rt = vfs_file_ref_create("/dev/test/testdev", &file_dup);
+    assert(rt == 0);
+    assert(file_dup == file);
+    assert(file_dup->private_data == file->private_data);
+    assert(file_dup->f_len == file->f_len);
+    assert(3 == __DL(atomic_read(&(file_dup->f_ref_count))));
+    assert(3 == atomic_read(&(file->f_ref_count)));
+    assert(&(file->f_rw_lock._mutex) == &(file_dup->f_rw_lock._mutex));
+    assert(&(file->f_rw_lock._rw_mutex) == &(file_dup->f_rw_lock._rw_mutex));
+
+    /// reopen multiple times
+    for(i = 0; i < 2048; i ++) {
+        rt = vfs_file_ref_create("/dev/test/testdev", &file_dup);
+        assert(rt == 0);
+        assert(file_dup == file);
+        assert(file_dup->private_data == file->private_data);
+        assert(file_dup->f_len == file->f_len);
+        assert(4 + i == __DL(atomic_read(&(file_dup->f_ref_count))));
+        assert(4 + i == atomic_read(&(file->f_ref_count)));
+        assert(&(file->f_rw_lock._mutex) == &(file_dup->f_rw_lock._mutex));
+        assert(&(file->f_rw_lock._rw_mutex) == &(file_dup->f_rw_lock._rw_mutex));
+
+    }
+__TST_PASSED__
 }

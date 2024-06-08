@@ -2,8 +2,8 @@
 #include <stdlib.h>
 #include "list.h"
 
-node_t* list_create_node(unsigned long data) {
-    node_t* new_node = (node_t*)malloc(sizeof(node_t));
+list_node_t* list_create_node(unsigned long data) {
+    list_node_t* new_node = (list_node_t*)malloc(sizeof(list_node_t));
     if (!new_node) {
         printf("Memory allocation error\n");
         exit(1);
@@ -13,12 +13,12 @@ node_t* list_create_node(unsigned long data) {
     return new_node;
 }
 
-node_t* list_append_node(node_t* head, unsigned long data) {
-    node_t* new_node = list_create_node(data);
+list_node_t* list_append_node(list_node_t* head, unsigned long data) {
+    list_node_t* new_node = list_create_node(data);
     if (head == NULL) {
         return new_node;
     }
-    node_t* temp = head;
+    list_node_t* temp = head;
     while (temp->next != NULL) {
         temp = temp->next;
     }
@@ -26,13 +26,13 @@ node_t* list_append_node(node_t* head, unsigned long data) {
     return head;
 }
 
-node_t* list_remove_node(node_t* head, unsigned long data) {
+list_node_t* list_remove_node(list_node_t* head, unsigned long data) {
     if (head == NULL) {
         return NULL;
     }
 
-    node_t* temp = head;
-    node_t* prev = NULL;
+    list_node_t* temp = head;
+    list_node_t* prev = NULL;
 
     if (temp != NULL && temp->data == data) {
         head = temp->next;
@@ -55,18 +55,25 @@ node_t* list_remove_node(node_t* head, unsigned long data) {
     return head;
 }
 
-void list_print_list(node_t* head) {
-    node_t* temp = head;
+void list_print_list(list_node_t* head, int (*dump_hook)(unsigned long)) {
+    list_node_t* temp = head;
     while (temp != NULL) {
-        printf("%lu -> ", temp->data);
+        if(!dump_hook) {
+            printf("%lu -> ", temp->data);
+        }
+        else {
+            if(dump_hook(temp->data)) {
+                return;
+            }
+        }
         temp = temp->next;
     }
     printf("NULL\n");
 }
 
-node_t* list_delete_list(node_t* head) {
-    node_t* current = head;
-    node_t* next = NULL;
+list_node_t* list_delete_list(list_node_t* head) {
+    list_node_t* current = head;
+    list_node_t* next = NULL;
     while (current != NULL) {
         next = current->next;
         free(current);

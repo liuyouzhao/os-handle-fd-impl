@@ -8,6 +8,7 @@
 void test_hash_function_pass();
 void test_task_create_one_success();
 void test_task_create_three_success();
+void test_file_create_success();
 
 int main(int argn, char** argc)
 {
@@ -22,6 +23,8 @@ int main(int argn, char** argc)
 
     test_task_create_one_success();
     test_task_create_three_success();
+
+    test_file_create_success();
 
     fflush(stdout);
     sleep(3);

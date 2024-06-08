@@ -11,10 +11,7 @@
 
 // Define the structure for a hash map entry
 typedef struct hash_map_entry_s {
-    union {
-        const char *key;
-        unsigned long id;
-    };
+    const char *key;
     unsigned long value;
     struct hash_map_entry_s *next;
 
@@ -23,8 +20,9 @@ typedef struct hash_map_entry_s {
 
 // Define the structure for the hash map
 typedef struct {
-    hash_map_entry_t **buckets;
+    hash_map_entry_t** buckets;
     size_t bucket_count;
+    arch_lock_t lock;
 } hash_map_t;
 
 // Hash function for string keys
@@ -40,5 +38,6 @@ hash_map_t* hash_map_create(size_t bucket_count);
 void hash_map_insert(hash_map_t *map, const char *key, unsigned long value);
 int hash_map_get(hash_map_t *map, const char *key, unsigned long *value);
 int hash_map_remove(hash_map_t *map, const char *key);
+void hash_map_dump(hash_map_t *map, int (*dump_hook)(unsigned long idx, const char*, unsigned long));
 
 #endif

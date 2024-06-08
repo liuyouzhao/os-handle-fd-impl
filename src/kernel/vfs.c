@@ -4,11 +4,16 @@
 #include "hash.h"
 #include "arch.h"
 
-static vfs_sys_t __vfs_sys;
+static vfs_sys_t* __vfs_sys;
 
 int vfs_sys_init() {
-    __vfs_sys.p_files_map = hash_map_create(ARCH_MAX_FILE_BUCKETS);
-    if(arch_spin_lock_init(&(__vfs_sys.sys_lock))) {
+    __vfs_sys = (vfs_sys_t*) malloc(sizeof(vfs_sys_t));
+    __vfs_sys->p_files_map = hash_map_create(ARCH_MAX_FILE_BUCKETS);
+    if(!__vfs_sys->p_files_map) {
+        return -1;
+    }
+    __vfs_sys->p_files_list = NULL;
+    if(arch_spin_lock_init(&(__vfs_sys->sys_lock))) {
         return -1;
     }
     return 0;
@@ -18,19 +23,19 @@ int vfs_file_ref_create(const char* path, vfs_file_t** output) {
 
     vfs_file_t* ptr_file = NULL;
     unsigned long private_addr = 0;
-
     int miss = 0;
 
-    arch_spin_lock(&(__vfs_sys.sys_lock));
+    arch_spin_lock(&(__vfs_sys->sys_lock));
 
-    miss = hash_map_get(__vfs_sys.p_files_map, path, &private_addr);
+    miss = hash_map_get(__vfs_sys->p_files_map, path, &private_addr);
 
-    arch_spin_unlock(&(__vfs_sys.sys_lock));
+    arch_spin_unlock(&(__vfs_sys->sys_lock));
 
     /// search the file by path
     if(!miss) {
         /// found
         ptr_file = (vfs_file_t*) private_addr;
+        atomic_inc(&(ptr_file->f_ref_count));
         *output = ptr_file;
         return 0;
     }
@@ -44,10 +49,11 @@ int vfs_file_ref_create(const char* path, vfs_file_t** output) {
     /// TODO: init the private_ptr by driver implementation
     ptr_file->private_data = (char*) malloc(4096);
 
-    /// insert to hashmap
-    arch_spin_lock(&(__vfs_sys.sys_lock));
-    hash_map_insert(__vfs_sys.p_files_map, path, (unsigned long)(ptr_file));
-    arch_spin_unlock(&(__vfs_sys.sys_lock));
+    /// insert to hashmap and list
+    arch_spin_lock(&(__vfs_sys->sys_lock));
+    hash_map_insert(__vfs_sys->p_files_map, path, (unsigned long)(ptr_file));
+    list_append_node(__vfs_sys->p_files_list, (unsigned long)(ptr_file));
+    arch_spin_unlock(&(__vfs_sys->sys_lock));
 
     *output = ptr_file;
 
@@ -56,6 +62,19 @@ int vfs_file_ref_create(const char* path, vfs_file_t** output) {
 
 int vfs_file_delete(const char* path, vfs_file_t** output) {
     /// Not implemented, out of scope.
+}
+
+static int __vfs_file_dump(unsigned long idx, const char* key, unsigned long data) {
+    vfs_file_t* file = (vfs_file_t*) data;
+    printf("__map(%lu)[%s]->%lu|%d|%p|%s\n",
+           idx,
+           key,
+           file->f_len,
+           atomic_read(&(file->f_ref_count)), file->private_data, file->path);
+}
+int vfs_files_list_dump() {
+    hash_map_dump(__vfs_sys->p_files_map, __vfs_file_dump);
+    return 0;
 }
 
 int vfs_read(vfs_file_t* file, char* buf, unsigned long len, unsigned long pos) {
