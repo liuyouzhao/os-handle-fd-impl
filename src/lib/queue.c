@@ -40,6 +40,11 @@ long queue_dequeue(queue_t* queue) {
     return data;
 }
 
+void queue_clean_queue(queue_t** queue) {
+    while(queue_dequeue(*queue) >= 0);
+    *queue = NULL;
+}
+
 void queue_display_queue(queue_t* queue) {
     queue_node_t* temp = queue->front;
     while (temp != NULL) {

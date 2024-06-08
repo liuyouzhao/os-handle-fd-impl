@@ -16,6 +16,6 @@ queue_t* queue_create_queue();
 void queue_enqueue(queue_t* queue, long data);
 long queue_dequeue(queue_t* queue);
 void queue_display_queue(queue_t* queue);
-
+void queue_clean_queue(queue_t** queue);
 
 #endif // QUEUE_H

@@ -61,8 +61,8 @@ int arch_rw_unlock_w(arch_rw_lock_t* rw_lock) {
     pthread_mutex_unlock(&(rw_lock->_mutex));
 }
 
-int arch_task_create(void *(*func)(void*), unsigned long* private_tid, unsigned long tid) {
-    return pthread_create(private_tid, NULL, func, (void*)tid);
+int arch_task_create(void *(*func)(void*), unsigned long* private_tid, void* args) {
+    return pthread_create(private_tid, NULL, func, args);
 }
 
 unsigned long arch_task_get_private_tid() {

@@ -24,19 +24,18 @@ int vfs_sys_init() {
 int vfs_file_ref_create(const char* path, vfs_file_t** output) {
 
     vfs_file_t* ptr_file = NULL;
-    unsigned long private_addr = 0;
-    int miss = 0;
 
-    arch_spin_lock(&(__vfs_sys->sys_lock));
+    size_t path_len = strlen(path);
+    if(strlen(path) > ARCH_VFS_FILENAME_MAX_LEN) {
+        fprintf(stderr, "vfs_file_ref_create path length exceeded max=%lu give=%lu", ARCH_VFS_FILENAME_MAX_LEN, path_len);
+        return -1;
+    }
 
-    miss = hash_map_get(__vfs_sys->p_files_map, path, &private_addr);
-
-    arch_spin_unlock(&(__vfs_sys->sys_lock));
+    ptr_file = vfs_file_search(path);
 
     /// search the file by path
-    if(!miss) {
+    if(ptr_file) {
         /// found
-        ptr_file = (vfs_file_t*) private_addr;
         atomic_inc(&(ptr_file->f_ref_count));
         *output = ptr_file;
         return 0;
@@ -44,7 +43,8 @@ int vfs_file_ref_create(const char* path, vfs_file_t** output) {
 
     /// create new file
     ptr_file = (vfs_file_t*) malloc(sizeof(vfs_file_t));
-    ptr_file->path = path;
+    ptr_file->path = (char*) malloc(sizeof(char) * ARCH_VFS_FILENAME_MAX_LEN);
+    memcpy(ptr_file->path, path, path_len * sizeof(char));
     atomic_inc(&(ptr_file->f_ref_count));
     arch_rw_lock_init(&(ptr_file->f_rw_lock));
 
@@ -54,7 +54,7 @@ int vfs_file_ref_create(const char* path, vfs_file_t** output) {
     /// insert to hashmap and list
     arch_spin_lock(&(__vfs_sys->sys_lock));
 
-    hash_map_insert(__vfs_sys->p_files_map, path, (unsigned long)(ptr_file));
+    hash_map_insert(__vfs_sys->p_files_map, ptr_file->path, (unsigned long)(ptr_file));
 
 #if CONF_VFS_IDX_LST_ENBL
     __vfs_sys->p_files_list = list_append_node(__vfs_sys->p_files_list, (unsigned long)(ptr_file));
@@ -65,6 +65,16 @@ int vfs_file_ref_create(const char* path, vfs_file_t** output) {
     *output = ptr_file;
 
     return 0;
+}
+
+vfs_file_t* vfs_file_search(const char* path) {
+    vfs_file_t* file = NULL;
+
+    arch_spin_lock(&(__vfs_sys->sys_lock));
+    hash_map_get(__vfs_sys->p_files_map, path, &file);
+    arch_spin_unlock(&(__vfs_sys->sys_lock));
+
+    return file;
 }
 
 int vfs_file_delete(const char* path, vfs_file_t** output) {

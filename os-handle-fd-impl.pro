@@ -8,7 +8,9 @@ PLATFORM = linux
 HEADERS += \
         src/include/arch/$$PLATFORM/*.h \
         src/include/kernel/*.h \
+        src/include/kernel/defs.h \
         src/include/kernel/sys.h \
+        src/include/kernel/task.h \
         src/include/lib/*.h \
         src/include/lib/list.h \
         src/include/os/*.h \
@@ -17,6 +19,7 @@ HEADERS += \
 SOURCES += \
         src/arch/$$PLATFORM/arch.c \
         src/kernel/sys.c \
+        src/kernel/task.c \
         src/kernel/vfs.c \
         src/lib/hash.c \
         src/lib/list.c \
@@ -30,6 +33,7 @@ SOURCES += \
         src/tests/test_file_open.c \
         src/tests/test_task_create.c \
         src/tests/test_vfs_file_create.c \
+        src/tests/test_vfs_file_search.c \
         src/tests/tests.c
 
 INCLUDEPATH += \

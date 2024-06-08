@@ -1,6 +1,7 @@
 #include <assert.h>
 #include <unistd.h>
 #include "sys.h"
+#include "task.h"
 #include "test_def.h"
 
 static tsk_id_t tmp_tid;
@@ -8,7 +9,7 @@ static tsk_id_t tmp_tid;
 void* task_func_1(void *param) {
     tsk_id_t tid = (tsk_id_t) param;
     sleep(1);
-    assert(tid == tmp_tid);
+    assert((tid) == tmp_tid);
 
     while(1) {
         sleep(1);

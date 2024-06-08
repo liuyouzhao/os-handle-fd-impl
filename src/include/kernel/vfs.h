@@ -17,7 +17,7 @@ typedef struct vfs_handle_s {
 
 typedef struct vfs_handle_bucket_s {
 
-    vfs_handle_t* handles;
+    vfs_handle_t** handles;
 
 } vfs_handle_bucket_t;
 
@@ -26,7 +26,7 @@ typedef struct vfs_handle_bucket_s {
  */
 typedef struct vfs_file_s {
 
-    const char* path;
+    char* path;
     atomic_long_t f_ref_count;
     arch_rw_lock_t f_rw_lock;
     unsigned long f_len;
@@ -51,6 +51,7 @@ int vfs_sys_init();
 
 int vfs_file_ref_create(const char* path, vfs_file_t** output);
 int vfs_file_delete(const char* path, vfs_file_t** output);
+vfs_file_t* vfs_file_search(const char* path);
 int vfs_files_hash_dump();
 int vfs_files_list_dump();
 
