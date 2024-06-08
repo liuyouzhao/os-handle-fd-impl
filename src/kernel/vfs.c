@@ -45,21 +45,18 @@ int vfs_sys_init() {
  * <HASH_KEY_UNLOCK>
  * return file
  */
-int vfs_file_get_or_create(const char* path, vfs_file_t** output, int create) {
-
-    vfs_file_t* ptr_file = NULL;
-
+int vfs_file_get_or_create(const char* path, unsigned long* file_ptr_addr, int create) {
+    vfs_file_t* ptr_file;
     size_t path_len = strlen(path);
     if(strlen(path) > ARCH_VFS_FILENAME_MAX_LEN) {
         fprintf(stderr, "vfs_file_ref_create path length exceeded max=%lu give=%lu", ARCH_VFS_FILENAME_MAX_LEN, path_len);
         return -1;
     }
 
-    ptr_file = vfs_file_search(path);
+    *file_ptr_addr = vfs_file_ptr_addr_search(path);
 
     /// found
-    if(ptr_file) {
-        *output = ptr_file;
+    if(*file_ptr_addr) {
         return 0;
     }
     else if(!create) {
@@ -79,26 +76,24 @@ int vfs_file_get_or_create(const char* path, vfs_file_t** output, int create) {
     /// insert to hashmap and list
     arch_spin_lock(&(__vfs_sys->sys_lock));
 
-    hash_map_insert(__vfs_sys->p_files_map, ptr_file->path, (unsigned long)(ptr_file));
+    *file_ptr_addr = hash_map_insert(__vfs_sys->p_files_map, ptr_file->path, (unsigned long)(ptr_file));
 
 #if CONF_VFS_IDX_LST_ENBL
     __vfs_sys->p_files_list = list_append_node(__vfs_sys->p_files_list, (unsigned long)(ptr_file));
 #endif
-
     arch_spin_unlock(&(__vfs_sys->sys_lock));
-
-    *output = ptr_file;
 
     return 0;
 }
 
-/// TODO: Optimize sys_lock to hash_index_lock to enhance concurrency
 /// Normally O(1) operations. Hash collision can cause at worst O(n).
 /// Using Optimized Tree-Redistribution Hash, the worst case O(logn)
-vfs_file_t* vfs_file_search(const char* path) {
-    vfs_file_t* file = NULL;
-    hash_map_get(__vfs_sys->p_files_map, path, &file);
-    return file;
+unsigned long vfs_file_ptr_addr_search(const char* path) {
+    unsigned long file_pointer_addr = 0;
+    if(hash_map_get(__vfs_sys->p_files_map, path, &file_pointer_addr)) {
+        return (unsigned long)NULL;
+    }
+    return file_pointer_addr;
 }
 
 /**
@@ -116,7 +111,8 @@ vfs_file_t* vfs_file_search(const char* path) {
  * <FILE_W_LOCK>
  * check still valid==1 (double lookup) or return
  * Release all pointers
- * valid=0
+ * free(file_address)
+ * file_address = NULL
  * <FILE_W_UNLOCK>
  *
  * <HASH_KEY_LOCK>

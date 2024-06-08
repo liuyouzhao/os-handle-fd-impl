@@ -5,14 +5,16 @@
 #include "hash.h"
 #include "list.h"
 
+#define VFS_PA2P(lu) (*((vfs_file_t**)lu))
 
 typedef struct vfs_handle_s {
+
     int fd;
     atomic_long_t read_pos;
     unsigned long mode;
     atomic_long_t valid;
+    unsigned long ptr_ptr_file_addr;
 
-    struct vfs_file_s* file;
 } vfs_handle_t;
 
 typedef struct vfs_handle_bucket_s {
@@ -31,7 +33,6 @@ typedef struct vfs_file_s {
     arch_rw_lock_t f_rw_lock;
     unsigned long f_len;
     void* private_data;
-    short valid;
 
 } vfs_file_t;
 
@@ -51,9 +52,9 @@ typedef struct vfs_sys_s {
 
 int vfs_sys_init();
 
-int vfs_file_get_or_create(const char* path, vfs_file_t** output, int create);
+int vfs_file_get_or_create(const char* path, unsigned long* file_ptr_addr, int create);
 int vfs_file_delete(const char* path);
-vfs_file_t* vfs_file_search(const char* path);
+unsigned long vfs_file_ptr_addr_search(const char* path);
 int vfs_files_hash_dump();
 int vfs_files_list_dump();
 

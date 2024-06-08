@@ -57,7 +57,6 @@ int task_create(tsk_id_t* out_task_id, void *(*func)(void*)) {
     int id = -1;
     tsk_id_t task_id;
     unsigned long prv_tid;
-    int rt;
     task_struct_t* task;
 
     id = atomic_inc_limit(&(s_sys_task_manager.count), ARCH_TSK_MAX);

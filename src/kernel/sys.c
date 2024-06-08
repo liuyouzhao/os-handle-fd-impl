@@ -46,24 +46,23 @@ static vfs_handle_t* __search_handle(tsk_id_t tid, int fd) {
  * Check return if fds limitation
  * <TSK_ISSOLATION_END>
  *
- * <GLOBAL_LOCK>
+ * <VFS_CONCURRENT_SAFE_BEGIN>
  * vfs_file_search search by path
- * <GLOBAL_UNLOCK>
- *
- * <FILE_LOCK>
  * vfs_file_ref_create if RW_CREATE and not exist
- * <FILE_UNLOCK>
+ * <VFS_CONCURRENT_SAFE_END>
  *
  * <TSK_ISSOLATION_BEGIN>
  * Alloc new vfs_handle*
- * Retrieve fd from recycle or generate new fd.
+ * Pop fd from Queue or generate new fd.
  * Calculate idx_bucket, idx_handle by nfd
  * Save vfs_handle* to vfs_handle_bucket_t by idx_bucket, idx_handle
  * <TSK_ISSOLATION_END>
  *
- * [FILE_ATOMIC] file->f_ref_count ++
+ * <FILE_W_LOCK>
+ * file->f_ref_count ++
+ * <FILE_W_UNLOCK>
  *
- * 8. return fd
+ * return fd
  */
 int sys_open(tsk_id_t tid, const char* path, unsigned int mode) {
     int i1 = -1;
@@ -72,7 +71,7 @@ int sys_open(tsk_id_t tid, const char* path, unsigned int mode) {
     task_struct_t* tsk = task_manager_get_task(tid);
     vfs_handle_bucket_t* ptr_bucket;
     vfs_handle_t* ptr_handle;
-    vfs_file_t* file;
+    unsigned long file_ptr_addr;
 
     if( !tsk || tsk->ts_priv_tid != arch_task_get_private_tid() ) {
         return -1;
@@ -101,11 +100,11 @@ int sys_open(tsk_id_t tid, const char* path, unsigned int mode) {
     atomic_set(&(ptr_handle->read_pos), 0);
 
     /// No free() needed. vfs_file_ref_create guarantee the mem collect.
-    if(vfs_file_get_or_create(path, &file, mode)) {
+    if(vfs_file_get_or_create(path, &file_ptr_addr, mode)) {
         atomic_set(&(ptr_handle->valid), 0);
         return -1;
     }
-    ptr_handle->file = file;
+    ptr_handle->ptr_ptr_file_addr = file_ptr_addr;
     atomic_set(&(ptr_handle->valid), 1);
 
     return nfd;
@@ -116,7 +115,7 @@ int sys_close(tsk_id_t tid, int fd) {
     if(!handle || !atomic_read(&(handle->valid))) {
         return -1;
     }
-    atomic_dec(&(handle->file->f_ref_count));
+    atomic_dec(&(VFS_PA2P(handle->ptr_ptr_file_addr)->f_ref_count));
     atomic_set(&(handle->valid), 0);
 }
 
@@ -127,7 +126,7 @@ int sys_read(tsk_id_t tid, int fd, char *buf, size_t len, unsigned long* pos) {
         return -1;
     }
 
-    rt = vfs_read(handle->file, buf, len, atomic_read(&(handle->read_pos)));
+    rt = vfs_read(VFS_PA2P(handle->ptr_ptr_file_addr), buf, len, atomic_read(&(handle->read_pos)));
 
     if(rt > 0) {
         atomic_add(&(handle->read_pos), rt);
@@ -141,7 +140,7 @@ int sys_write(tsk_id_t tid, int fd, const char *buf, size_t len, unsigned long p
     if(!handle || !atomic_read(&(handle->valid))) {
         return -1;
     }
-    rt = vfs_write(handle->file, buf, len, pos);
+    rt = vfs_write(VFS_PA2P(handle->ptr_ptr_file_addr), buf, len, pos);
     return rt;
 }
 

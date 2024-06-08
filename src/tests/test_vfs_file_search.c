@@ -14,7 +14,7 @@ __TST_START_DEP__("test_create_many_files_success")
     for(; i < 1024; i ++) {
         memset(filename, 0, sizeof(filename));
         sprintf(filename, "/dev/testdev/testfd-%d", i);
-        file = vfs_file_search(filename);
+        file = VFS_PA2P(vfs_file_ptr_addr_search(filename));
         assert(file != NULL);
         assert(1 == atomic_read(&(file->f_ref_count)));
         assert(strcmp(filename, file->path) == 0);
