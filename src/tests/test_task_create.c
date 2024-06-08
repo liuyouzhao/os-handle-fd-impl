@@ -58,3 +58,24 @@ __TST_START__
 
 __TST_PASSED__
 }
+
+void test_task_create_many_success() {
+ __TST_START__
+
+    tsk_id_t _tid;
+    int rt = -1;
+    int i = 0;
+    int count = 0;
+
+    for(; i < 1024; i ++) {
+        rt = task_create(&_tid, task_func_shared);
+        assert(rt == 0);
+    }
+
+    count = task_manager_get_count();
+    assert(__DL(count) == 1028);
+
+    task_manager_dump_tasks();
+
+__TST_PASSED__
+}

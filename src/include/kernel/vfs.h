@@ -39,7 +39,10 @@ typedef struct vfs_file_s {
 typedef struct vfs_sys_s {
 
     hash_map_t* p_files_map;
+
+#if CONF_VFS_IDX_LST_ENBL
     list_node_t* p_files_list;
+#endif
     arch_lock_t sys_lock;
 
 } vfs_sys_t;
@@ -48,6 +51,7 @@ int vfs_sys_init();
 
 int vfs_file_ref_create(const char* path, vfs_file_t** output);
 int vfs_file_delete(const char* path, vfs_file_t** output);
+int vfs_files_hash_dump();
 int vfs_files_list_dump();
 
 int vfs_read(vfs_file_t* file, char* buf, unsigned long len, unsigned long pos);

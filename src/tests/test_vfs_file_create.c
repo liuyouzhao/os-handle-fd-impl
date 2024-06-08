@@ -22,13 +22,11 @@ __TST_START__
     /// reopen - 1
     rt = vfs_file_ref_create("/dev/test/testdev", &file_dup);
 
-    vfs_files_list_dump();
-
     assert(rt == 0);
     assert(file_dup == file);
     assert(file_dup->private_data == file->private_data);
     assert(file_dup->f_len == file->f_len);
-    assert(2 == __DL(atomic_read(&(file_dup->f_ref_count))));
+    assert(2 == atomic_read(&(file_dup->f_ref_count)));
     assert(2 == atomic_read(&(file->f_ref_count)));
     assert(&(file->f_rw_lock._mutex) == &(file_dup->f_rw_lock._mutex));
     assert(&(file->f_rw_lock._rw_mutex) == &(file_dup->f_rw_lock._rw_mutex));
@@ -39,7 +37,7 @@ __TST_START__
     assert(file_dup == file);
     assert(file_dup->private_data == file->private_data);
     assert(file_dup->f_len == file->f_len);
-    assert(3 == __DL(atomic_read(&(file_dup->f_ref_count))));
+    assert(3 == atomic_read(&(file_dup->f_ref_count)));
     assert(3 == atomic_read(&(file->f_ref_count)));
     assert(&(file->f_rw_lock._mutex) == &(file_dup->f_rw_lock._mutex));
     assert(&(file->f_rw_lock._rw_mutex) == &(file_dup->f_rw_lock._rw_mutex));
@@ -51,11 +49,15 @@ __TST_START__
         assert(file_dup == file);
         assert(file_dup->private_data == file->private_data);
         assert(file_dup->f_len == file->f_len);
-        assert(4 + i == __DL(atomic_read(&(file_dup->f_ref_count))));
+        assert(4 + i == atomic_read(&(file_dup->f_ref_count)));
         assert(4 + i == atomic_read(&(file->f_ref_count)));
         assert(&(file->f_rw_lock._mutex) == &(file_dup->f_rw_lock._mutex));
         assert(&(file->f_rw_lock._rw_mutex) == &(file_dup->f_rw_lock._rw_mutex));
 
     }
+
+    vfs_files_hash_dump();
+    vfs_files_list_dump();
+
 __TST_PASSED__
 }

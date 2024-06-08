@@ -4,13 +4,13 @@
 #include <pthread.h>
 
 
-#define ARCH_MAX_FDS 1024
-#define ARCH_MAX_FDS_BUCKETS 32
-#define ARCH_MAX_PROC 1024
-#define ARCH_MAX_FILE_BUCKETS 1024
+#define ARCH_VFS_FDS_MAX 1024lu
+#define ARCH_VFS_FDS_BUCKETS_MAX 32lu
+#define ARCH_VFS_FILE_BUCKETS_MAX 1024lu
+#define ARCH_TSK_MAX 2048lu
 
-#define TIMEOUT_NS 100000000
-#define SPIN_TIME_NS 10000000
+#define TIMEOUT_NS 100000000lu
+#define SPIN_TIME_NS 10000000lu
 
 typedef unsigned long tsk_id_t;
 

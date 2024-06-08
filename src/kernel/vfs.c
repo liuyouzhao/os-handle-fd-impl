@@ -8,11 +8,13 @@ static vfs_sys_t* __vfs_sys;
 
 int vfs_sys_init() {
     __vfs_sys = (vfs_sys_t*) malloc(sizeof(vfs_sys_t));
-    __vfs_sys->p_files_map = hash_map_create(ARCH_MAX_FILE_BUCKETS);
+    __vfs_sys->p_files_map = hash_map_create(ARCH_VFS_FDS_BUCKETS_MAX);
     if(!__vfs_sys->p_files_map) {
         return -1;
     }
+#if CONF_VFS_IDX_LST_ENBL
     __vfs_sys->p_files_list = NULL;
+#endif
     if(arch_spin_lock_init(&(__vfs_sys->sys_lock))) {
         return -1;
     }
@@ -51,8 +53,13 @@ int vfs_file_ref_create(const char* path, vfs_file_t** output) {
 
     /// insert to hashmap and list
     arch_spin_lock(&(__vfs_sys->sys_lock));
+
     hash_map_insert(__vfs_sys->p_files_map, path, (unsigned long)(ptr_file));
-    list_append_node(__vfs_sys->p_files_list, (unsigned long)(ptr_file));
+
+#if CONF_VFS_IDX_LST_ENBL
+    __vfs_sys->p_files_list = list_append_node(__vfs_sys->p_files_list, (unsigned long)(ptr_file));
+#endif
+
     arch_spin_unlock(&(__vfs_sys->sys_lock));
 
     *output = ptr_file;
@@ -64,16 +71,36 @@ int vfs_file_delete(const char* path, vfs_file_t** output) {
     /// Not implemented, out of scope.
 }
 
-static int __vfs_file_dump(unsigned long idx, const char* key, unsigned long data) {
+static int __vfs_file_dump_key(unsigned long idx, const char* key, unsigned long data) {
     vfs_file_t* file = (vfs_file_t*) data;
     printf("__map(%lu)[%s]->%lu|%d|%p|%s\n",
            idx,
            key,
            file->f_len,
            atomic_read(&(file->f_ref_count)), file->private_data, file->path);
+    return 0;
 }
+
+static int __vfs_file_dump(unsigned long idx, unsigned long data) {
+    vfs_file_t* file = (vfs_file_t*) data;
+    printf("__lst(%lu)[%s]->%lu|%d|%p\n",
+           idx,
+           file->path,
+           file->f_len,
+           atomic_read(&(file->f_ref_count)), file->private_data);
+    return 0;
+}
+
+
 int vfs_files_list_dump() {
-    hash_map_dump(__vfs_sys->p_files_map, __vfs_file_dump);
+#if CONF_VFS_IDX_LST_ENBL
+    list_dump_list(__vfs_sys->p_files_list, __vfs_file_dump);
+#endif
+    return 0;
+}
+
+int vfs_files_hash_dump() {
+    hash_map_dump(__vfs_sys->p_files_map, __vfs_file_dump_key);
     return 0;
 }
 

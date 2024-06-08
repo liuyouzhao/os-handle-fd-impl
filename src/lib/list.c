@@ -55,20 +55,20 @@ list_node_t* list_remove_node(list_node_t* head, unsigned long data) {
     return head;
 }
 
-void list_print_list(list_node_t* head, int (*dump_hook)(unsigned long)) {
+void list_dump_list(list_node_t* head, int (*dump_hook)(unsigned long, unsigned long)) {
     list_node_t* temp = head;
+    unsigned long idx = 0;
     while (temp != NULL) {
         if(!dump_hook) {
             printf("%lu -> ", temp->data);
         }
         else {
-            if(dump_hook(temp->data)) {
+            if(dump_hook(idx ++, temp->data)) {
                 return;
             }
         }
         temp = temp->next;
     }
-    printf("NULL\n");
 }
 
 list_node_t* list_delete_list(list_node_t* head) {
