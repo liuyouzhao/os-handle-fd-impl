@@ -13,7 +13,6 @@ HEADERS += \
         src/include/kernel/task.h \
         src/include/lib/*.h \
         src/include/lib/list.h \
-        src/include/os/*.h \
         src/tests/test_def.h
 
 SOURCES += \
@@ -24,12 +23,9 @@ SOURCES += \
         src/lib/hash.c \
         src/lib/list.c \
         src/lib/queue.c \
-        src/os/dev.c \
         src/init.c \
-        src/tests/lib/test_atomic.c \
-        src/tests/lib/test_dentry.c \
         src/tests/lib/test_hash.c \
-        src/tests/lib/test_queue.c \
+        src/tests/test_fd_reuse_sanity.c \
         src/tests/test_open_close_concurrency.c \
         src/tests/test_r1w3_subtasks_1.c \
         src/tests/test_r1w3_subtasks_2.c \
@@ -47,7 +43,6 @@ INCLUDEPATH += \
         src/include/arch/$$PLATFORM \
         src/include/kernel \
         src/include/lib \
-        src/include/os \
         src/tests/
 
 LIBS += -lpthread

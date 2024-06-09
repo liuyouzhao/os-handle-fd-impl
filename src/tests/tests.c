@@ -13,6 +13,7 @@ void test_task_create_many();
 void test_create_many_files();
 void test_same_file_reference();
 void test_file_search();
+void test_fd_reuse();
 void test_sys_open_1_fds_in_many_tasks();
 void test_read_write_single_task_sanity();
 void test_read_write_same_file_from_4_tasks_1();
@@ -39,6 +40,8 @@ int main(int argn, char** argc)
     test_create_many_files();
     test_same_file_reference();
     test_file_search();
+
+    test_fd_reuse();
 
     test_sys_open_1_fds_in_many_tasks();
 
