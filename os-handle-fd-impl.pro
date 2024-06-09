@@ -23,7 +23,6 @@ SOURCES += \
         src/lib/hash.c \
         src/lib/list.c \
         src/lib/queue.c \
-        src/init.c \
         src/tests/lib/test_hash.c \
         src/tests/test_fd_reuse_sanity.c \
         src/tests/test_open_close_concurrency.c \

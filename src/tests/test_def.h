@@ -3,8 +3,9 @@
 
 #include <stdio.h>
 
-#define __TST_START__ printf("%s begins\n", __FUNCTION__);
-#define __TST_PASSED__ printf("%s PASSED\n", __FUNCTION__);
+#define __TST_START__ printf("%s begins\n", __FUNCTION__); fflush(stdout);
+
+#define __TST_PASSED__ printf("%s PASSED\n", __FUNCTION__); fflush(stdout);
 
 #define __TST_START_DEP__(dep) printf("\t%s --dep-->[%s] \n", __FUNCTION__, dep);
 #define __TST_PASSED_DEP__ printf("\t%s PASSED\n", __FUNCTION__);

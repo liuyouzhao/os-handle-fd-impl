@@ -30,8 +30,6 @@ static void* task_execute_read(void* param) {
 
     while(rounds--) {
         while((rt = sys_read(tid, fd, buf_read, TEST_BLK_RW_SIZ, &pos)) > 0) {
-            printf("%s|", buf_read);
-            fflush(stdout);
             assert(strncmp(buf_read, buf_read_expect_x, rt) == 0
                    ||
                    strncmp(buf_read, buf_read_expect_y, rt) == 0
@@ -43,8 +41,6 @@ static void* task_execute_read(void* param) {
             expect_pos += rt;
             assert(expect_pos == pos);
         }
-        printf("\n\n\n");
-        fflush(stdout);
         sys_seek(tid, fd, 0);
         expect_pos = 0;
         usleep(1000 * 200);

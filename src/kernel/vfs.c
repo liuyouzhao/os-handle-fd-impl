@@ -49,6 +49,8 @@ __S_PURE__ vfs_file_t* __alloc_file(const char* path, int len) {
     /// reference + 1, initially ref==1
     atomic_inc(&(ptr_file->f_ref_count));
 
+    ptr_file->valid = 1;
+
     return ptr_file;
 }
 
@@ -138,7 +140,7 @@ unsigned long vfs_file_ptr_addr_search(const char* path) {
  * Found:======================
  * <FILE_W_LOCK>
  * check still valid==1 (double lookup) or return
- * Release all pointers
+ * Release all pointers except ref and lock
  * valid = 0
  * Save file pointer to QUEUE-{recycle}
  * <FILE_W_UNLOCK>
@@ -148,13 +150,56 @@ unsigned long vfs_file_ptr_addr_search(const char* path) {
  * <HASH_KEY_UNLOCK>
  */
 int vfs_file_delete(const char* path) {
-    /// Not implemented, out of scope.
+    unsigned long ptr_ptr_addr = vfs_file_ptr_addr_search(path);
+    vfs_file_t* ptr_file = VFS_PA2P(ptr_ptr_addr);
+
+    /// Not Found
+    if(!ptr_file) {
+        return -1;
+    }
+
+    arch_rw_lock_w(&(ptr_file->f_rw_lock));
+
+    /// Double lookup after lock acquire
+    if(!ptr_file->valid) {
+        /// already deleted by another task
+        return -1;
+    }
+    ptr_file->valid = 0;
+
+    /// release internal buffer
+    free(ptr_file->private_data);
+    ptr_file->private_data = NULL;
+
+    /// release filename(path) buffer
+    free(ptr_file->path);
+    ptr_file->path = NULL;
+
+    /// Don't release f_ref_count and f_rw_lock
+    /// When kernel task(thread) recycle the file object,
+    /// it will free the f_rw_lock and vfs_file_t* when f_ref_count is 0.
+
+    arch_rw_unlock_w(&(ptr_file->f_rw_lock));
+
+    /// Remove from hashmap, key scope synchronized.
+    /// Concurrenctly safe with
+    /// vfs_file_ptr_addr_search and vfs_file_get_or_create
+    hash_map_remove(__vfs_sys->vfs_files_map, path);
+
+    /// Push the file address into global recyncle queue for kernel thread access
+    queue_enqueue(__vfs_sys->vfs_files_recycle, ptr_ptr_addr);
+
     return 0;
 }
 
 void vfs_file_ref_inc(unsigned long file_ptr_addr) {
     vfs_file_t* file = VFS_PA2P(file_ptr_addr);
     atomic_inc(&(file->f_ref_count));
+}
+
+void vfs_file_ref_dec(unsigned long file_ptr_addr) {
+    vfs_file_t* file = VFS_PA2P(file_ptr_addr);
+    atomic_dec(&(file->f_ref_count));
 }
 
 static int __vfs_file_dump_key(unsigned long idx, const char* key, unsigned long data) {
@@ -174,6 +219,9 @@ int vfs_files_hash_dump() {
 
 int vfs_read(vfs_file_t* file, char* buf, unsigned long len, unsigned long pos) {
 
+    if(!file->valid) {
+        return -1;
+    }
     if(pos >= file->f_len) {
         return 0;
     }
@@ -193,7 +241,9 @@ int vfs_read(vfs_file_t* file, char* buf, unsigned long len, unsigned long pos) 
 
 int vfs_write(vfs_file_t* file, char* buf, unsigned long len, unsigned long pos) {
 
-
+    if(!file->valid) {
+        return -1;
+    }
     if(pos >= file->f_len) {
         return 0;
     }

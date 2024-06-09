@@ -12,8 +12,10 @@
 #define ARCH_VFS_FILE_HASH_BUCKETS_SIZ 1024lu
 #define ARCH_VFS_FILENAME_MAX_LEN 512lu
 
+/// task
 #define ARCH_TSK_MAX 4096lu
 
+/// timeout
 #define TIMEOUT_NS 100000000lu
 #define SPIN_TIME_NS 10000000lu
 

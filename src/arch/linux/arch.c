@@ -39,26 +39,32 @@ int arch_rw_lock_init(arch_rw_lock_t* rw_lock) {
 }
 
 int arch_rw_lock_destroy(arch_rw_lock_t* rw_lock) {
-    pthread_rwlock_destroy(&(rw_lock->_rw_mutex));
-    pthread_mutex_destroy(&(rw_lock->_mutex));
+    if ( pthread_rwlock_destroy(&(rw_lock->_rw_mutex)) ) {
+        return -1;
+    }
+    return pthread_mutex_destroy(&(rw_lock->_mutex));
 }
 
 int arch_rw_lock_r(arch_rw_lock_t* rw_lock) {
-    pthread_rwlock_rdlock(&(rw_lock->_rw_mutex));
+    return pthread_rwlock_rdlock(&(rw_lock->_rw_mutex));
 }
 
 int arch_rw_lock_w(arch_rw_lock_t* rw_lock) {
-    pthread_mutex_lock(&(rw_lock->_mutex));
-    pthread_rwlock_wrlock(&(rw_lock->_rw_mutex));
+    if ( pthread_mutex_lock(&(rw_lock->_mutex)) ) {
+        return -1;
+    }
+    return pthread_rwlock_wrlock(&(rw_lock->_rw_mutex));
 }
 
 int arch_rw_unlock_r(arch_rw_lock_t* rw_lock) {
-    pthread_rwlock_unlock(&(rw_lock->_rw_mutex));
+    return pthread_rwlock_unlock(&(rw_lock->_rw_mutex));
 }
 
 int arch_rw_unlock_w(arch_rw_lock_t* rw_lock) {
-    pthread_rwlock_unlock(&(rw_lock->_rw_mutex));
-    pthread_mutex_unlock(&(rw_lock->_mutex));
+    if ( pthread_rwlock_unlock(&(rw_lock->_rw_mutex)) ) {
+        return -1;
+    }
+    return pthread_mutex_unlock(&(rw_lock->_mutex));
 }
 
 int arch_task_create(void *(*func)(void*), unsigned long* private_tid, void* args) {

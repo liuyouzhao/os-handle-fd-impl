@@ -60,14 +60,19 @@ static vfs_handle_t** __search_handle(task_struct_t* task, int fd) {
 static int __detach_handle(task_struct_t* task, int fd) {
     int i_bucket = __get_bucket_index(fd);
     int i_handle = __get_handle_index(fd);
+    unsigned long priv_ptr_address;
 
     vfs_handle_t** ptr_ptr_handle = &(task->ts_handle_buckets[i_bucket].handles[i_handle]);
+
     if(*ptr_ptr_handle) {
 
 #if ARCH_CONF_SUB_TASK_ENABLE
 
         /// handle w lock
         arch_rw_lock_w(&(task->ts_handle_buckets->handle_rw_locks[i_bucket]));
+
+        /// store the private address
+        priv_ptr_address = (*ptr_ptr_handle)->ptr_ptr_file_addr;
 
         /// double lookup after lock acquired.
         if(*ptr_ptr_handle) {
@@ -77,12 +82,14 @@ static int __detach_handle(task_struct_t* task, int fd) {
             *ptr_ptr_handle = NULL;
         }
 
-        /// recycle this detached fd to queue
-        queue_enqueue(task->ts_recyc_fds, fd);
-
         /// handle w unlock
         arch_rw_unlock_w(&(task->ts_handle_buckets->handle_rw_locks[i_bucket]));
 
+        /// recycle this detached fd to queue
+        queue_enqueue(task->ts_recyc_fds, fd);
+
+        /// file refernce - 1 by private arress
+        vfs_file_ref_dec(priv_ptr_address);
 #else
         free(*ptr_ptr_handle);
         *ptr_ptr_handle = NULL;
@@ -129,7 +136,7 @@ int sys_open(tsk_id_t tid, const char* path, unsigned int mode) {
     vfs_handle_t* ptr_handle;
     unsigned long file_ptr_addr;
 
-    if( tsk->ts_lfd.counter >= ARCH_VFS_FDS_MAX ) {
+    if( tsk->ts_lfd.counter >= (int)ARCH_VFS_FDS_MAX ) {
         fprintf(stderr, "File %s open failed, fds exceed limit\n", path);
         return -1;
     }
@@ -282,7 +289,7 @@ int sys_read(tsk_id_t tid, int fd, char *buf, size_t len, unsigned long* pos) {
 int sys_seek(tsk_id_t tid, int fd, unsigned long pos) {
     task_struct_t* task;
     vfs_handle_t** ptr_ptr_handle;
-    if(pos < 0 || pos >= ARCH_CONF_VFS_BLOCK_SIZ) {
+    if(pos >= ARCH_CONF_VFS_BLOCK_SIZ) {
         perror("sys_seek position out of boundary.");
         return -1;
     }

@@ -163,7 +163,7 @@ void task_manager_dump_tasks() {
     arch_spin_lock(&(s_sys_task_manager.lock));
     printf("Task Manager: %d tasks \n", atomic_read(&(s_sys_task_manager.count)));
     for(; i < atomic_read(&(s_sys_task_manager.count)); i ++) {
-        printf("task->%u|%lu\n",
+        printf("task->%lu|%d\n",
                s_sys_task_manager.tasks[i]->ts_priv_tid,
                atomic_read(&(s_sys_task_manager.tasks[i]->ts_lfd)));
     }

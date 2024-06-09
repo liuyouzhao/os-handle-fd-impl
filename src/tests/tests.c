@@ -1,10 +1,8 @@
 #include <stdio.h>
 #include <pthread.h>
 #include <unistd.h>
-#include "hash.h"
 #include "sys.h"
 #include "task.h"
-#include "test_def.h"
 
 void test_hash_function();
 void test_task_create_one();
@@ -22,7 +20,7 @@ void test_read_write_diff_fds_4_subtasks();
 void test_read_write_same_fd_4_subtasks();
 void test_rlock_same_file_from_many_tasks();
 
-int main(int argn, char** argc)
+int main()
 {
 
     printf("sys_init...\n");

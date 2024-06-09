@@ -59,6 +59,7 @@ int vfs_file_get_or_create(const char* path, unsigned long* file_ptr_addr, int c
 int vfs_file_delete(const char* path);
 unsigned long vfs_file_ptr_addr_search(const char* path);
 void vfs_file_ref_inc(unsigned long file_ptr_addr);
+void vfs_file_ref_dec(unsigned long file_ptr_addr);
 int vfs_files_hash_dump();
 int vfs_files_list_dump();
 
