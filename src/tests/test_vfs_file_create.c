@@ -24,7 +24,6 @@ void test_create_many_files_success() {
     }
 
     vfs_files_hash_dump();
-    vfs_files_list_dump();
 
     __TST_PASSED__
 }
@@ -81,7 +80,6 @@ __TST_START__
     }
 
     vfs_files_hash_dump();
-    vfs_files_list_dump();
 
 __TST_PASSED__
 }

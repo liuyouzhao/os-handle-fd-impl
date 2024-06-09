@@ -11,12 +11,18 @@ typedef struct {
 
 typedef atomic_t atomic_long_t;
 
+#define atomic_init(v) (__atomic_init(v))
 #define atomic_inc_limit(v, l) (__atomic_add_return(   1, (v)  ))
 #define atomic_inc(v) (__atomic_add_return(   1, (v)  ))
 #define atomic_dec(v) (__atomic_add_return(  -1, (v)  ))
 #define atomic_read(v) (__atomic_read(v))
 #define atomic_set(v, i) ((void)(__atomic_set(   (v), i   )))
 #define atomic_add(v, i) (__atomic_add_return(   i, (v)  ))
+
+static __inline__ int __atomic_init(atomic_t *v) {
+    v->counter = 0;
+    return arch_spin_lock_init(&(v->lock));
+}
 
 static __inline__ int __atomic_add_return_limit(int i, int l, atomic_t *v)
 {

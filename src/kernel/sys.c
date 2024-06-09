@@ -7,40 +7,89 @@
 #include "task.h"
 
 
-__S_PURE__ int __get_1d_index(int fd) {
+__S_PURE__ int __get_bucket_index(int fd) {
     return fd / ARCH_VFS_FDS_PER_BUCKET;
 }
 
-__S_PURE__ int __get_2d_index(int fd) {
+__S_PURE__ int __get_handle_index(int fd) {
     return fd % ARCH_VFS_FDS_PER_BUCKET;
 }
 
 /**
  * Fetch from 2d array table
  * TC O(1)
+ *
+ * <TSK_ISSOLATION_BEGIN>
+ * Get the task pointer
+ * <TSK_ISSOLATION_END>
+ *
+ * Calculate i_bucket, i_handle
+ * Get handle lock by i_bucket, i_handle
+ *
+ * Get bucket without lock and check NULL
+ * Get handle
+ * <HANDLE_R_LOCK>
+ *
+ * <HANDLE_R_UNLOCK>
  */
-static vfs_handle_t** __search_handle(tsk_id_t tid, int fd) {
+static vfs_handle_t** __search_handle(task_struct_t* task, int fd) {
     vfs_handle_bucket_t* bucket;
-    vfs_handle_t** ret_handle;
-    task_struct_t* tsk = task_manager_get_task(tid);
-    if( !tsk || tsk->ts_priv_tid != arch_task_get_private_tid() ) {
-        arch_signal_kill();
-        return NULL;
-    }
+
     /// No need atomic for compare.
-    if( fd > tsk->ts_lfd.counter ) {
+    if( fd > task->ts_lfd.counter ) {
         return NULL;
     }
 
-    int i1 = __get_1d_index(fd);
-    int i2 = __get_2d_index(fd);
+    int i_bucket = __get_bucket_index(fd);
+    int i_handle = __get_handle_index(fd);
 
-    bucket = &(tsk->ts_handle_buckets[i1]);
+    /// bucket and bucket->handles are never free(), so no need lock here.
+    bucket = &(task->ts_handle_buckets[i_bucket]);
     if(!bucket->handles) {
         return NULL;
     }
-    ret_handle = &(tsk->ts_handle_buckets[i1].handles[i2]);
-    return ret_handle;
+
+
+    /// sys_close can be called here to release the specific handle.
+    /// any time from here, the *ret_handle can be NULL or dirty memory
+    /// but it is totally ok because we will have lock during read/write
+    /// See {Checkpoint1:Dirty handle pointer}
+    return &(task->ts_handle_buckets[i_bucket].handles[i_handle]);
+}
+
+static int __detach_handle(task_struct_t* task, int fd) {
+    int i_bucket = __get_bucket_index(fd);
+    int i_handle = __get_handle_index(fd);
+
+    vfs_handle_t** ptr_ptr_handle = &(task->ts_handle_buckets[i_bucket].handles[i_handle]);
+    if(*ptr_ptr_handle) {
+
+#if ARCH_CONF_SUB_TASK_ENABLE
+
+        /// handle w lock
+        arch_rw_lock_w(&(task->ts_handle_buckets->handle_rw_locks[fd]));
+
+        /// double lookup after lock acquired.
+        if(*ptr_ptr_handle) {
+            /// detach handle
+            free(*ptr_ptr_handle);
+            /// {Checkpoint1:Dirty handle pointer}
+            *ptr_ptr_handle = NULL;
+        }
+
+        /// recycle this detached fd to queue
+        queue_enqueue(task->ts_recyc_fds, fd);
+
+        /// handle w unlock
+        arch_rw_unlock_w(&(task->ts_handle_buckets->handle_rw_locks[fd]));
+
+#else
+        free(*ptr_ptr_handle);
+        *ptr_ptr_handle = NULL;
+#endif
+        return 0;
+    }
+    return -1;
 }
 
 /**
@@ -56,23 +105,22 @@ static vfs_handle_t** __search_handle(tsk_id_t tid, int fd) {
  * <VFS_CONCURRENT_SAFE_END>
  *
  * <TSK_ISSOLATION_BEGIN>
- * Alloc new vfs_handle*
  * Pop fd from Queue or generate new fd.
  * Calculate idx_bucket, idx_handle by nfd
+ * Alloc new vfs_handle*
  * Save vfs_handle* to vfs_handle_bucket_t by idx_bucket, idx_handle
  * <TSK_ISSOLATION_END>
  *
- * <FILE_W_LOCK>
- * if file address still not NULL(double lookup)
- * associate file attributes to handle struct
- * file->f_ref_count ++
- * <FILE_W_UNLOCK>
+ * Associate file attributes to handle struct
+ * During the association, if the file is removed, the file->valid==0,
+ * the later read/write will lock file_rw_lock and check file->valid.
  *
+ * close method is only disassociation, no need to check file status.
  * return fd
  */
 int sys_open(tsk_id_t tid, const char* path, unsigned int mode) {
-    int i1 = -1;
-    int i2 = -1;
+    int i_bucket = -1;
+    int i_handle = -1;
     int nfd;
     int ret;
     task_struct_t* tsk = task_manager_get_task(tid);
@@ -96,12 +144,12 @@ int sys_open(tsk_id_t tid, const char* path, unsigned int mode) {
     }
 
     /// calculate 1d and 2d indexes
-    i1 = __get_1d_index(nfd);
-    i2 = __get_2d_index(nfd);
+    i_bucket = __get_bucket_index(nfd);
+    i_handle = __get_handle_index(nfd);
 
     /// Check collision
-    ptr_bucket = &(tsk->ts_handle_buckets[i1]);
-    if(ptr_bucket->handles &&ptr_bucket->handles[i2]) {
+    ptr_bucket = &(tsk->ts_handle_buckets[i_bucket]);
+    if(ptr_bucket->handles &&ptr_bucket->handles[i_handle]) {
         fprintf(stderr, "sys_open fd allocation conflicts fd=%d", nfd);
         return -1;
     }
@@ -112,67 +160,143 @@ int sys_open(tsk_id_t tid, const char* path, unsigned int mode) {
         return -1;
     }
 
+
+    /// Check handles and alloc
     if(!ptr_bucket->handles) {
+#if ARCH_CONF_SUB_TASK_ENABLE
+        /// bucket w lock, re-use the first handle of its bucket as bucket lock
+        /// TODO: Optimize using independent bucket locks
+        /// re-using handle lock lets the first fd reading/writing be blocked during fd association.
+        arch_rw_lock_w(&(tsk->ts_handle_buckets->handle_rw_locks[i_bucket * ARCH_VFS_FDS_PER_BUCKET]));
+
+        /// double lookup after acquired lock
+        if(!ptr_bucket->handles)
+            ptr_bucket->handles = (vfs_handle_t**) calloc(ARCH_VFS_FDS_PER_BUCKET, sizeof(vfs_handle_t*));
+
+#else
         ptr_bucket->handles = (vfs_handle_t**) calloc(ARCH_VFS_FDS_PER_BUCKET, sizeof(vfs_handle_t*));
+#endif
+
+#if ARCH_CONF_SUB_TASK_ENABLE
+        /// bucket w unlock
+        arch_rw_unlock_w(&(tsk->ts_handle_buckets->handle_rw_locks[i_bucket * ARCH_VFS_FDS_PER_BUCKET]));
+#endif
     }
-    ptr_bucket->handles[i2] = (vfs_handle_t*) malloc(sizeof(vfs_handle_t));
-    ptr_handle = ptr_bucket->handles[i2];
+
+
+    /// Pure process start
+    ptr_handle = (vfs_handle_t*) malloc(sizeof(vfs_handle_t));
     ptr_handle->fd = nfd;
     ptr_handle->mode = mode;
-    atomic_set(&(ptr_handle->read_pos), 0);
-    /// Associate with handle
+    ptr_handle->read_pos = 0;
     ptr_handle->ptr_ptr_file_addr = file_ptr_addr;
+    arch_spin_lock_init(&(ptr_handle->read_pos_lock));
+    /// Pure process end
+
+#if ARCH_CONF_SUB_TASK_ENABLE
+    /// handle w lock
+    arch_rw_lock_w(&(tsk->ts_handle_buckets->handle_rw_locks[nfd]));
+#endif
+
+    ptr_bucket->handles[i_handle] = ptr_handle;
+
+#if ARCH_CONF_SUB_TASK_ENABLE
+    /// handle w unlock
+    arch_rw_unlock_w(&(tsk->ts_handle_buckets->handle_rw_locks[nfd]));
+#endif
 
     return nfd;
 }
 
-/**
- * <TSK_ISSOLATION_BEGIN>
- * __search_handle
- * free and set NULL
- * <TSK_ISSOLATION_END>
- */
 int sys_close(tsk_id_t tid, int fd) {
-    vfs_handle_t** handle = __search_handle(tid, fd);
-    if ( !(*handle) ) {
+    task_struct_t* task = task_manager_get_task(tid);
+
+    /// any time from here, the *handle can be released.
+    /// So if considering sub tasks parallism, handle lock is needed.
+    if(__detach_handle(task, fd)) {
+        /// fd not found(not an open fd)
         return -1;
     }
 
-    free(*handle);
-    *handle = NULL;
+    /// TODO: Optimize, use a different lock
+    arch_spin_lock(&(task->ts_lock));
+    queue_enqueue(task->ts_recyc_fds, fd);
+    arch_spin_unlock(&(task->ts_lock));
     return 0;
 }
 
-/**
- * <TSK_ISSOLATION_BEGIN>
- * __search_handle
- * <TSK_ISSOLATION_END>
- *
- *
- */
+
 int sys_read(tsk_id_t tid, int fd, char *buf, size_t len, unsigned long* pos) {
-    vfs_handle_t** handle = __search_handle(tid, fd);
+    task_struct_t* task = task_manager_get_task(tid);
+    vfs_handle_t** ptr_ptr_handle = __search_handle(task, fd);
+    int tmp_pos = 0;
     int rt = 0;
-    if ( !(*handle) ) {
+    if ( !(*ptr_ptr_handle) ) {
         return -1;
     }
 
-    rt = vfs_read(VFS_PA2P((*handle)->ptr_ptr_file_addr),
-                  buf, len, atomic_read(&((*handle)->read_pos)));
+#if ARCH_CONF_SUB_TASK_ENABLE
+    arch_rw_lock_r(&(task->ts_handle_buckets->handle_rw_locks[fd]));
+
+    /// double lookup after lock acquired
+    /// Still not NULL, then read
+    if( *(ptr_ptr_handle) ) {
+
+        /// read_pos may have already been changed by other sub-tasks
+        /// who also use the same fd handle to read
+        /// but it is fine, save the latest pos.
+        tmp_pos = (*ptr_ptr_handle)->read_pos;
+
+        /// since here, read_pos can be changed any time by other sub-tasks.
+        /// who also use the same fd handle to read
+        /// but we still use the tmp_pos
+        rt = vfs_read(VFS_PA2P((*ptr_ptr_handle)->ptr_ptr_file_addr), buf, len, tmp_pos);
+
+        /// lock for pos update, Only sub-tasks concurrently read same fd needs this lock
+        arch_spin_lock(&((*ptr_ptr_handle)->read_pos_lock));
+        if(rt > 0) {
+            (*ptr_ptr_handle)->read_pos = tmp_pos + rt;
+        }
+        arch_spin_unlock(&((*ptr_ptr_handle)->read_pos_lock));
+        /// unlock pos update
+
+        *pos = (*ptr_ptr_handle)->read_pos;
+    }
+
+    arch_rw_unlock_r(&(task->ts_handle_buckets->handle_rw_locks[fd]));
+#else
+    rt = vfs_read(VFS_PA2P((*ptr_ptr_handle)->ptr_ptr_file_addr), buf, len, (*ptr_ptr_handle)->read_pos);
 
     if(rt > 0) {
-        atomic_add(&((*handle)->read_pos), rt);
+        (*ptr_ptr_handle)->read_pos += rt;
+        *pos = (*ptr_ptr_handle)->read_pos;
     }
+#endif
+
     return rt;
 }
 
 int sys_write(tsk_id_t tid, int fd, const char *buf, size_t len, unsigned long pos) {
-    vfs_handle_t** handle = __search_handle(tid, fd);
+    task_struct_t* task = task_manager_get_task(tid);
+    vfs_handle_t** ptr_ptr_handle = __search_handle(task, fd);
     int rt = 0;
-    if ( !(*handle) ) {
+    if ( !(*ptr_ptr_handle) ) {
         return -1;
     }
-    rt = vfs_write(VFS_PA2P((*handle)->ptr_ptr_file_addr), buf, len, pos);
+
+#if ARCH_CONF_SUB_TASK_ENABLE
+    arch_rw_lock_r(&(task->ts_handle_buckets->handle_rw_locks[fd]));
+
+    /// double lookup after lock acquired
+    /// Still not NULL, then read
+    if( *(ptr_ptr_handle) ) {
+        rt = vfs_write(VFS_PA2P((*ptr_ptr_handle)->ptr_ptr_file_addr), buf, len, pos);
+    }
+
+    arch_rw_unlock_r(&(task->ts_handle_buckets->handle_rw_locks[fd]));
+#else
+    rt = vfs_write(VFS_PA2P((*ptr_ptr_handle)->ptr_ptr_file_addr), buf, len, pos);
+#endif
     return rt;
 }
 

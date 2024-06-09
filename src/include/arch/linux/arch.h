@@ -3,11 +3,13 @@
 
 #include <pthread.h>
 
-
+/// fds
 #define ARCH_VFS_FDS_MAX 1024lu
 #define ARCH_VFS_FDS_BUCKETS_MAX 32lu
-#define ARCH_VFS_FILE_BUCKETS_MAX 1024lu
 #define ARCH_VFS_FDS_PER_BUCKET (ARCH_VFS_FDS_MAX / ARCH_VFS_FDS_BUCKETS_MAX)
+
+/// file
+#define ARCH_VFS_FILE_HASH_BUCKETS_SIZ 1024lu
 #define ARCH_VFS_FILENAME_MAX_LEN 512lu
 
 #define ARCH_TSK_MAX 2048lu
@@ -46,5 +48,8 @@ void arch_signal_kill();
 
 int arch_task_create(void *(*func)(void*), unsigned long* private_tid, void* args);
 unsigned long arch_task_get_private_tid();
+
+//// Arch configs
+#define ARCH_CONF_SUB_TASK_ENABLE 1
 
 #endif

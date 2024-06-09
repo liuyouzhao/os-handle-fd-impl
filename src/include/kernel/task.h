@@ -18,6 +18,7 @@ typedef struct task_struct_s {
 
     arch_lock_t ts_lock; /// task scope lock
 
+    atomic_long_t ts_open_fds; // open fds count
 } task_struct_t;
 
 typedef struct task_manager_s {
@@ -35,5 +36,5 @@ task_struct_t* task_manager_get_task_list();
 task_struct_t* task_manager_get_task(tsk_id_t task_id);
 int task_create(tsk_id_t* task_id, void *(*func)(void*));
 int task_destroy(tsk_id_t task_id);
-
+int task_get_open_fd_num(tsk_id_t task_id);
 #endif

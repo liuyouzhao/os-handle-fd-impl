@@ -3,30 +3,59 @@
 #include "vfs.h"
 #include "hash.h"
 #include "arch.h"
+#include "defs.h"
 
 static vfs_sys_t* __vfs_sys;
 
 int vfs_sys_init() {
     __vfs_sys = (vfs_sys_t*) malloc(sizeof(vfs_sys_t));
-    __vfs_sys->p_files_map = hash_map_create(ARCH_VFS_FDS_BUCKETS_MAX);
-    if(!__vfs_sys->p_files_map) {
+    __vfs_sys->vfs_files_map = hash_map_create(ARCH_VFS_FILE_HASH_BUCKETS_SIZ);
+    if(!__vfs_sys->vfs_files_map) {
         return -1;
     }
-#if CONF_VFS_IDX_LST_ENBL
-    __vfs_sys->p_files_list = NULL;
-#endif
+
+    __vfs_sys->vfs_files_recycle = queue_create_queue();
+    if(!__vfs_sys->vfs_files_recycle) {
+        return -1;
+    }
+
     if(arch_spin_lock_init(&(__vfs_sys->sys_lock))) {
         return -1;
     }
     return 0;
 }
+__S_PURE__ vfs_file_t* __alloc_file(const char* path, int len) {
+    vfs_file_t* ptr_file;
+
+    ptr_file = (vfs_file_t*) malloc(sizeof(vfs_file_t));
+    if(ptr_file == NULL) {
+        fprintf(stderr, "%s failed. file malloc error. File %s\n", __FUNCTION__, path);
+    }
+
+    ptr_file->path = (char*) malloc(sizeof(char) * ARCH_VFS_FILENAME_MAX_LEN);
+    if(ptr_file->path == NULL) {
+        fprintf(stderr, "%s failed. path malloc error. File %s\n", __FUNCTION__, path);
+    }
+
+    memcpy(ptr_file->path, path, len * sizeof(char));
+    if(arch_rw_lock_init(&(ptr_file->f_rw_lock))) {
+        fprintf(stderr, "%s failed. lock init error. File %s\n", __FUNCTION__, path);
+    }
+
+    if(atomic_init(&(ptr_file->f_ref_count))) {
+        fprintf(stderr, "%s failed. atomic init error. File %s\n", __FUNCTION__, path);
+    }
+
+    /// reference + 1, initially ref==1
+    atomic_inc(&(ptr_file->f_ref_count));
+
+    return ptr_file;
+}
 
 /**
  * [PURE] check path length limit
  *
- * <UNSAFE_BEGIN>
- * vfs_file_search
- * <UNSAFE_END>
+ * vfs_file_ptr_addr_search
  *
  * <--- create/close concurrent intervenes
  *
@@ -65,42 +94,35 @@ int vfs_file_get_or_create(const char* path, unsigned long* file_ptr_addr, int c
     }
 
     /// create new file
-    ptr_file = (vfs_file_t*) malloc(sizeof(vfs_file_t));
-    ptr_file->path = (char*) malloc(sizeof(char) * ARCH_VFS_FILENAME_MAX_LEN);
-    memcpy(ptr_file->path, path, path_len * sizeof(char));
-    atomic_inc(&(ptr_file->f_ref_count));
-    arch_rw_lock_init(&(ptr_file->f_rw_lock));
+    ptr_file = __alloc_file(path, path_len);
+    if(!ptr_file) {
+        return -1;
+    }
 
     /// TODO: init the private_ptr by driver implementation
     ptr_file->private_data = (char*) malloc(4096);
 
-    /// insert to hashmap and list
-    arch_spin_lock(&(__vfs_sys->sys_lock));
-
-    *file_ptr_addr = hash_map_insert(__vfs_sys->p_files_map, ptr_file->path, (unsigned long)(ptr_file));
-
-#if CONF_VFS_IDX_LST_ENBL
-    __vfs_sys->p_files_list = list_append_node(__vfs_sys->p_files_list, (unsigned long)(ptr_file));
-#endif
-    arch_spin_unlock(&(__vfs_sys->sys_lock));
-
+    /// insert to hashmap
+    /// Before insert, the file->ref > 0 already, the kernel task won't release it.
+    *file_ptr_addr = hash_map_insert(__vfs_sys->vfs_files_map, ptr_file->path, (unsigned long)(ptr_file));
     return 0;
 }
 
 /// Normally O(1) operations. Hash collision can cause at worst O(n).
 /// Using Optimized Tree-Redistribution Hash, the worst case O(logn)
+/// <HASH_KEY_RW_LOCK>
+/// hash_map_get
+/// <HASH_KEY_RW_UNLOCK>
 unsigned long vfs_file_ptr_addr_search(const char* path) {
     unsigned long file_pointer_addr = 0;
-    if(hash_map_get(__vfs_sys->p_files_map, path, &file_pointer_addr)) {
+    if(hash_map_get(__vfs_sys->vfs_files_map, path, &file_pointer_addr)) {
         return (unsigned long)NULL;
     }
     return file_pointer_addr;
 }
 
 /**
- * <UNSAFE_BEGIN>
  * vfs_file_search
- * <UNSAFE_END>
  *
  * <--- create/close concurrent intervenes
  *
@@ -112,8 +134,8 @@ unsigned long vfs_file_ptr_addr_search(const char* path) {
  * <FILE_W_LOCK>
  * check still valid==1 (double lookup) or return
  * Release all pointers
- * free(file_address)
- * file_address = NULL
+ * valid = 0
+ * Save file pointer to QUEUE-{recycle}
  * <FILE_W_UNLOCK>
  *
  * <HASH_KEY_LOCK>
@@ -122,6 +144,12 @@ unsigned long vfs_file_ptr_addr_search(const char* path) {
  */
 int vfs_file_delete(const char* path) {
     /// Not implemented, out of scope.
+    return 0;
+}
+
+void vfs_file_ref_inc(unsigned long file_ptr_addr) {
+    vfs_file_t* file = VFS_PA2P(file_ptr_addr);
+    atomic_inc(&(file->f_ref_count));
 }
 
 static int __vfs_file_dump_key(unsigned long idx, const char* key, unsigned long data) {
@@ -130,30 +158,12 @@ static int __vfs_file_dump_key(unsigned long idx, const char* key, unsigned long
            idx,
            key,
            file->f_len,
-           atomic_read(&(file->f_ref_count)), file->private_data, file->path);
-    return 0;
-}
-
-static int __vfs_file_dump(unsigned long idx, unsigned long data) {
-    vfs_file_t* file = (vfs_file_t*) data;
-    printf("__lst(%lu)[%s]->%lu|%d|%p\n",
-           idx,
-           file->path,
-           file->f_len,
-           atomic_read(&(file->f_ref_count)), file->private_data);
-    return 0;
-}
-
-
-int vfs_files_list_dump() {
-#if CONF_VFS_IDX_LST_ENBL
-    list_dump_list(__vfs_sys->p_files_list, __vfs_file_dump);
-#endif
+           file->f_ref_count.counter, file->private_data, file->path);
     return 0;
 }
 
 int vfs_files_hash_dump() {
-    hash_map_dump(__vfs_sys->p_files_map, __vfs_file_dump_key);
+    hash_map_dump(__vfs_sys->vfs_files_map, __vfs_file_dump_key);
     return 0;
 }
 

@@ -1,7 +1,5 @@
 #include <assert.h>
 #include <string.h>
-#include "hash.h"
-#include "sys.h"
 #include "vfs.h"
 #include "test_def.h"
 

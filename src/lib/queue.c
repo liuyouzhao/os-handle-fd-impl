@@ -27,7 +27,6 @@ void queue_enqueue(queue_t* queue, long data) {
 
 long queue_dequeue(queue_t* queue) {
     if (queue->front == NULL) {
-        printf("Queue is empty\n");
         return -1;
     }
     queue_node_t* temp = queue->front;

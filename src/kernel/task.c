@@ -26,7 +26,7 @@ int task_manager_init() {
 
 __S_PURE__ task_struct_t* __task_alloc() {
     task_struct_t* __tsk = (task_struct_t*) malloc(sizeof(task_struct_t));
-    int ret;
+    unsigned long i, j;
     if(!__tsk) {
         fprintf(stderr, "task_alloc failed as memory exceeded.\n");
         fflush(stderr);
@@ -37,7 +37,40 @@ __S_PURE__ task_struct_t* __task_alloc() {
     __tsk->ts_handle_buckets = NULL;
     __tsk->ts_recyc_fds = queue_create_queue();
     __tsk->ts_lfd.counter = 0;
+    __tsk->ts_open_fds.counter = 0;
     __tsk->ts_handle_buckets = (vfs_handle_bucket_t*) calloc(ARCH_VFS_FDS_BUCKETS_MAX, sizeof(vfs_handle_bucket_t));
+    if(!__tsk->ts_handle_buckets) {
+        fprintf(stderr, "task_alloc failed, ts_handle_buckets calloc error.\n");
+        fflush(stderr);
+        free(__tsk);
+        return NULL;
+    }
+
+/// Only when support sub task concurrency.
+#if ARCH_CONF_SUB_TASK_ENABLE
+    /// Init task handle locks
+    __tsk->ts_handle_buckets->handle_rw_locks = (arch_rw_lock_t*) calloc(ARCH_VFS_FDS_MAX, sizeof(arch_rw_lock_t));
+    if(!__tsk->ts_handle_buckets->handle_rw_locks) {
+        fprintf(stderr, "task_alloc failed, ts_handle_buckets calloc error.\n");
+        fflush(stderr);
+        free(__tsk->ts_handle_buckets);
+        free(__tsk);
+        return NULL;
+    }
+    for(i = 0; i < ARCH_VFS_FDS_MAX; i ++) {
+        if(arch_rw_lock_init(&(__tsk->ts_handle_buckets->handle_rw_locks[i]))) {
+            fprintf(stderr, "task_alloc failed, ts_handle_buckets calloc error.\n");
+            fflush(stderr);
+            for(j = 0; j < i; j ++) {
+                arch_rw_lock_destroy(&(__tsk->ts_handle_buckets->handle_rw_locks[i]));
+            }
+            free(__tsk->ts_handle_buckets->handle_rw_locks);
+            free(__tsk->ts_handle_buckets);
+            free(__tsk);
+            return NULL;
+        }
+    }
+#endif
     return __tsk;
 }
 
@@ -100,6 +133,10 @@ int task_create(tsk_id_t* out_task_id, void *(*func)(void*)) {
 int task_destroy(tsk_id_t task_id) {
     /// Not Implemented. Out of question scope.
     return 0;
+}
+
+int task_get_open_fd_num(tsk_id_t task_id) {
+    task_struct_t* task = task_manager_get_task(task_id);
 }
 
 /**
