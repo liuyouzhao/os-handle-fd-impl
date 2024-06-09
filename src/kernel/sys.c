@@ -15,12 +15,13 @@ __S_PURE__ int __get_2d_index(int fd) {
     return fd % ARCH_VFS_FDS_PER_BUCKET;
 }
 
-static int inc_get_fd(task_struct_t* tsk) {
-    return atomic_inc(&(tsk->ts_lfd));
-}
-
-static vfs_handle_t* __search_handle(tsk_id_t tid, int fd) {
-    vfs_handle_t* ret_handle;
+/**
+ * Fetch from 2d array table
+ * TC O(1)
+ */
+static vfs_handle_t** __search_handle(tsk_id_t tid, int fd) {
+    vfs_handle_bucket_t* bucket;
+    vfs_handle_t** ret_handle;
     task_struct_t* tsk = task_manager_get_task(tid);
     if( !tsk || tsk->ts_priv_tid != arch_task_get_private_tid() ) {
         arch_signal_kill();
@@ -34,7 +35,11 @@ static vfs_handle_t* __search_handle(tsk_id_t tid, int fd) {
     int i1 = __get_1d_index(fd);
     int i2 = __get_2d_index(fd);
 
-    ret_handle = tsk->ts_handle_buckets[i1].handles[i2];
+    bucket = &(tsk->ts_handle_buckets[i1]);
+    if(!bucket->handles) {
+        return NULL;
+    }
+    ret_handle = &(tsk->ts_handle_buckets[i1].handles[i2]);
     return ret_handle;
 }
 
@@ -47,8 +52,7 @@ static vfs_handle_t* __search_handle(tsk_id_t tid, int fd) {
  * <TSK_ISSOLATION_END>
  *
  * <VFS_CONCURRENT_SAFE_BEGIN>
- * vfs_file_search search by path
- * vfs_file_ref_create if RW_CREATE and not exist
+ * vfs_file_get_or_create
  * <VFS_CONCURRENT_SAFE_END>
  *
  * <TSK_ISSOLATION_BEGIN>
@@ -59,6 +63,8 @@ static vfs_handle_t* __search_handle(tsk_id_t tid, int fd) {
  * <TSK_ISSOLATION_END>
  *
  * <FILE_W_LOCK>
+ * if file address still not NULL(double lookup)
+ * associate file attributes to handle struct
  * file->f_ref_count ++
  * <FILE_W_UNLOCK>
  *
@@ -68,79 +74,105 @@ int sys_open(tsk_id_t tid, const char* path, unsigned int mode) {
     int i1 = -1;
     int i2 = -1;
     int nfd;
+    int ret;
     task_struct_t* tsk = task_manager_get_task(tid);
     vfs_handle_bucket_t* ptr_bucket;
     vfs_handle_t* ptr_handle;
     unsigned long file_ptr_addr;
 
-    if( !tsk || tsk->ts_priv_tid != arch_task_get_private_tid() ) {
+    if( !tsk ||
+        tsk->ts_priv_tid != arch_task_get_private_tid() ||
+        tsk->ts_lfd.counter >= ARCH_VFS_FDS_MAX ) {
         return -1;
     }
 
     /// Get collected fd from queue
     arch_spin_lock(&(tsk->ts_lock));
-
     nfd = queue_dequeue(tsk->ts_recyc_fds);
-
     arch_spin_unlock(&(tsk->ts_lock));
 
     if(nfd < 0) {
-        nfd = inc_get_fd(tsk);
+        nfd = atomic_inc(&(tsk->ts_lfd));
     }
 
     /// calculate 1d and 2d indexes
     i1 = __get_1d_index(nfd);
     i2 = __get_2d_index(nfd);
 
+    /// Check collision
     ptr_bucket = &(tsk->ts_handle_buckets[i1]);
+    if(ptr_bucket->handles &&ptr_bucket->handles[i2]) {
+        fprintf(stderr, "sys_open fd allocation conflicts fd=%d", nfd);
+        return -1;
+    }
 
-    ptr_handle = &(ptr_bucket->handles[i2]);
+    /// vfs create or get file
+    ret = vfs_file_get_or_create(path, &file_ptr_addr, mode);
+    if(ret) {
+        return -1;
+    }
+
+    if(!ptr_bucket->handles) {
+        ptr_bucket->handles = (vfs_handle_t**) calloc(ARCH_VFS_FDS_PER_BUCKET, sizeof(vfs_handle_t*));
+    }
+    ptr_bucket->handles[i2] = (vfs_handle_t*) malloc(sizeof(vfs_handle_t));
+    ptr_handle = ptr_bucket->handles[i2];
     ptr_handle->fd = nfd;
     ptr_handle->mode = mode;
     atomic_set(&(ptr_handle->read_pos), 0);
-
-    /// No free() needed. vfs_file_ref_create guarantee the mem collect.
-    if(vfs_file_get_or_create(path, &file_ptr_addr, mode)) {
-        atomic_set(&(ptr_handle->valid), 0);
-        return -1;
-    }
+    /// Associate with handle
     ptr_handle->ptr_ptr_file_addr = file_ptr_addr;
-    atomic_set(&(ptr_handle->valid), 1);
 
     return nfd;
 }
 
+/**
+ * <TSK_ISSOLATION_BEGIN>
+ * __search_handle
+ * free and set NULL
+ * <TSK_ISSOLATION_END>
+ */
 int sys_close(tsk_id_t tid, int fd) {
-    vfs_handle_t* handle = __search_handle(tid, fd);
-    if(!handle || !atomic_read(&(handle->valid))) {
+    vfs_handle_t** handle = __search_handle(tid, fd);
+    if ( !(*handle) ) {
         return -1;
     }
-    atomic_dec(&(VFS_PA2P(handle->ptr_ptr_file_addr)->f_ref_count));
-    atomic_set(&(handle->valid), 0);
+
+    free(*handle);
+    *handle = NULL;
+    return 0;
 }
 
+/**
+ * <TSK_ISSOLATION_BEGIN>
+ * __search_handle
+ * <TSK_ISSOLATION_END>
+ *
+ *
+ */
 int sys_read(tsk_id_t tid, int fd, char *buf, size_t len, unsigned long* pos) {
-    vfs_handle_t* handle = __search_handle(tid, fd);
+    vfs_handle_t** handle = __search_handle(tid, fd);
     int rt = 0;
-    if(!handle || !atomic_read(&(handle->valid))) {
+    if ( !(*handle) ) {
         return -1;
     }
 
-    rt = vfs_read(VFS_PA2P(handle->ptr_ptr_file_addr), buf, len, atomic_read(&(handle->read_pos)));
+    rt = vfs_read(VFS_PA2P((*handle)->ptr_ptr_file_addr),
+                  buf, len, atomic_read(&((*handle)->read_pos)));
 
     if(rt > 0) {
-        atomic_add(&(handle->read_pos), rt);
+        atomic_add(&((*handle)->read_pos), rt);
     }
     return rt;
 }
 
 int sys_write(tsk_id_t tid, int fd, const char *buf, size_t len, unsigned long pos) {
-    vfs_handle_t* handle = __search_handle(tid, fd);
+    vfs_handle_t** handle = __search_handle(tid, fd);
     int rt = 0;
-    if(!handle || !atomic_read(&(handle->valid))) {
+    if ( !(*handle) ) {
         return -1;
     }
-    rt = vfs_write(VFS_PA2P(handle->ptr_ptr_file_addr), buf, len, pos);
+    rt = vfs_write(VFS_PA2P((*handle)->ptr_ptr_file_addr), buf, len, pos);
     return rt;
 }
 

@@ -37,7 +37,7 @@ __S_PURE__ task_struct_t* __task_alloc() {
     __tsk->ts_handle_buckets = NULL;
     __tsk->ts_recyc_fds = queue_create_queue();
     __tsk->ts_lfd.counter = 0;
-    __tsk->ts_handle_buckets = (vfs_handle_bucket_t*) malloc(sizeof(vfs_handle_bucket_t) * ARCH_VFS_FDS_BUCKETS_MAX);
+    __tsk->ts_handle_buckets = (vfs_handle_bucket_t*) calloc(ARCH_VFS_FDS_BUCKETS_MAX, sizeof(vfs_handle_bucket_t));
     return __tsk;
 }
 

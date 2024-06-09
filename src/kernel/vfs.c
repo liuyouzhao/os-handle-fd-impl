@@ -49,7 +49,7 @@ int vfs_file_get_or_create(const char* path, unsigned long* file_ptr_addr, int c
     vfs_file_t* ptr_file;
     size_t path_len = strlen(path);
     if(strlen(path) > ARCH_VFS_FILENAME_MAX_LEN) {
-        fprintf(stderr, "vfs_file_ref_create path length exceeded max=%lu give=%lu", ARCH_VFS_FILENAME_MAX_LEN, path_len);
+        fprintf(stderr, "vfs_file_ref_create path length exceeded max=%lu give=%lu\n", ARCH_VFS_FILENAME_MAX_LEN, path_len);
         return -1;
     }
 
@@ -60,6 +60,7 @@ int vfs_file_get_or_create(const char* path, unsigned long* file_ptr_addr, int c
         return 0;
     }
     else if(!create) {
+        fprintf(stderr, "File not found. %s\n", path);
         return -1;
     }
 

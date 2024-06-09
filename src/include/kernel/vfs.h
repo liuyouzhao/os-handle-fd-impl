@@ -12,7 +12,6 @@ typedef struct vfs_handle_s {
     int fd;
     atomic_long_t read_pos;
     unsigned long mode;
-    atomic_long_t valid;
     unsigned long ptr_ptr_file_addr;
 
 } vfs_handle_t;
