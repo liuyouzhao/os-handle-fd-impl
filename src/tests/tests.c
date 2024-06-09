@@ -35,13 +35,11 @@ int main(int argn, char** argc)
     test_same_file_reference();
     test_file_search();
 
-    //test_sys_open_1_fds_in_many_tasks();
+    test_sys_open_1_fds_in_many_tasks();
 
     test_read_write_single_task_sanity();
 
     fflush(stdout);
-
-    task_manager_wait_all_tasks();
 
     return 0;
 }

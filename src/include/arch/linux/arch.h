@@ -52,5 +52,7 @@ unsigned long arch_task_get_private_tid();
 
 //// Arch configs
 #define ARCH_CONF_SUB_TASK_ENABLE 1
+#define ARCH_CONF_MOCK_TASK 0
+#define ARCH_CONF_VFS_BLOCK_SIZ 4096
 
 #endif

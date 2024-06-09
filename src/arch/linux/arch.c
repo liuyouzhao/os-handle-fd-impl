@@ -62,7 +62,11 @@ int arch_rw_unlock_w(arch_rw_lock_t* rw_lock) {
 }
 
 int arch_task_create(void *(*func)(void*), unsigned long* private_tid, void* args) {
+#if ARCH_CONF_MOCK_TASK
+    *private_tid = rand();
+#else
     return pthread_create(private_tid, NULL, func, args);
+#endif
 }
 
 unsigned long arch_task_get_private_tid() {

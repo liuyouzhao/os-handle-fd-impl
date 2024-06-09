@@ -102,9 +102,9 @@ int vfs_file_get_or_create(const char* path, unsigned long* file_ptr_addr, int c
         return -1;
     }
 
-    /// TODO: init the private_ptr by driver implementation
-    ptr_file->private_data = (char*) malloc(4096);
-    ptr_file->f_len = 4096;
+    /// TODO: init the private_ptr by driver ko implementation
+    ptr_file->private_data = (char*) malloc(ARCH_CONF_VFS_BLOCK_SIZ);
+    ptr_file->f_len = ARCH_CONF_VFS_BLOCK_SIZ;
 
     /// insert to hashmap
     /// Before insert, the file->ref > 0 already, the kernel task won't release it.
@@ -172,7 +172,6 @@ int vfs_files_hash_dump() {
 }
 
 int vfs_read(vfs_file_t* file, char* buf, unsigned long len, unsigned long pos) {
-    arch_rw_lock_r(&(file->f_rw_lock));
 
     if(pos >= file->f_len) {
         return 0;
@@ -181,14 +180,16 @@ int vfs_read(vfs_file_t* file, char* buf, unsigned long len, unsigned long pos) 
         len = file->f_len - pos;
     }
 
+    arch_rw_lock_r(&(file->f_rw_lock));
+    /// TODO: hook user implemented driver ko ioctl(READ..) for scalability
     memcpy(buf, ((char*)file->private_data) + pos, len);
-
     arch_rw_unlock_r(&(file->f_rw_lock));
+
     return len;
 }
 
 int vfs_write(vfs_file_t* file, char* buf, unsigned long len, unsigned long pos) {
-    arch_rw_lock_w(&(file->f_rw_lock));
+
 
     if(pos >= file->f_len) {
         return 0;
@@ -197,8 +198,10 @@ int vfs_write(vfs_file_t* file, char* buf, unsigned long len, unsigned long pos)
         len = file->f_len - pos;
     }
 
+    arch_rw_lock_w(&(file->f_rw_lock));
+    /// TODO: hook user implemented driver ko ioctl(WRITE..) for scalability
     memcpy(((char*)file->private_data) + pos, buf, len);
-
     arch_rw_unlock_w(&(file->f_rw_lock));
+
     return len;
 }

@@ -31,6 +31,8 @@ __TST_START__
 
     task_manager_dump_tasks();
 
+    task_manager_wait_one_task(_tid);
+
 __TST_PASSED__
 }
 
@@ -49,6 +51,9 @@ __TST_START__
 
     assert(count == 4);
 
+    task_manager_wait_one_task(_tid1);
+    task_manager_wait_one_task(_tid2);
+    task_manager_wait_one_task(_tid3);
 __TST_PASSED__
 }
 
@@ -68,5 +73,6 @@ void test_task_create_many() {
     count = task_manager_get_count();
     assert(__DL(count) == 504);
 
+    task_manager_wait_all_tasks();
 __TST_PASSED__
 }

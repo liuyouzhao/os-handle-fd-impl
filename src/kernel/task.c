@@ -103,7 +103,7 @@ int task_create(tsk_id_t* out_task_id, void *(*func)(void*)) {
     task = __task_alloc();
 
     /// Most of the time there won't be errors, so __task_free won't be called frequently.
-    arch_spin_lock(&(s_sys_task_manager.lock));
+    //arch_spin_lock(&(s_sys_task_manager.lock));
 
     task_id = (tsk_id_t) id - 1;
     if(s_sys_task_manager.tasks[task_id]) {
@@ -127,12 +127,16 @@ int task_create(tsk_id_t* out_task_id, void *(*func)(void*)) {
     }
     task->ts_priv_tid = prv_tid;
 
-    arch_spin_unlock(&(s_sys_task_manager.lock));
+    //arch_spin_unlock(&(s_sys_task_manager.lock));
     return 0;
 }
 
 int task_destroy(tsk_id_t task_id) {
-    /// Not Implemented. Out of question scope.
+    task_manager_wait_one_task(task_id);
+    if(s_sys_task_manager.tasks[task_id]) {
+        __task_free(&(s_sys_task_manager.tasks[task_id]));
+        s_sys_task_manager.tasks[task_id] = NULL;
+    }
     return 0;
 }
 
