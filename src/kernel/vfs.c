@@ -93,7 +93,7 @@ int vfs_file_get_or_create(const char* path, unsigned long* file_ptr_addr, int c
         atomic_inc(&(ptr_file->f_ref_count));
         return 0;
     }
-    else if(!create) {
+    else if(create == RW_ONLY) {
         fprintf(stderr, "File not found. %s\n", path);
         return -1;
     }
@@ -239,7 +239,7 @@ int vfs_read(vfs_file_t* file, char* buf, unsigned long len, unsigned long pos) 
     return len;
 }
 
-int vfs_write(vfs_file_t* file, char* buf, unsigned long len, unsigned long pos) {
+int vfs_write(vfs_file_t* file, const char* buf, unsigned long len, unsigned long pos) {
 
     if(!file->valid) {
         return -1;

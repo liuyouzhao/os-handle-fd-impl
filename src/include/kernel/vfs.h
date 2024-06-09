@@ -3,8 +3,10 @@
 
 #include "atomic.h"
 #include "hash.h"
-#include "list.h"
 #include "queue.h"
+
+#define RW_ONLY 0
+#define RW_CREATE 1
 
 #define VFS_PA2P(lu) (*((vfs_file_t**)lu))
 
@@ -64,5 +66,5 @@ int vfs_files_hash_dump();
 int vfs_files_list_dump();
 
 int vfs_read(vfs_file_t* file, char* buf, unsigned long len, unsigned long pos);
-int vfs_write(vfs_file_t* file, char* buf, unsigned long len, unsigned long pos);
+int vfs_write(vfs_file_t* file, const char* buf, unsigned long len, unsigned long pos);
 #endif

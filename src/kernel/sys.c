@@ -318,7 +318,7 @@ int sys_write(tsk_id_t tid, int fd, const char *buf, size_t len, unsigned long p
     /// double lookup after lock acquired
     /// Still not NULL, then read
     if( *(ptr_ptr_handle) ) {
-        rt = vfs_write(VFS_PA2P((*ptr_ptr_handle)->ptr_ptr_file_addr), buf, len, pos);
+        rt = vfs_write(VFS_PA2P((*ptr_ptr_handle)->ptr_ptr_file_addr), (char*)buf, len, pos);
     }
 
     arch_rw_unlock_r(&(task->ts_handle_buckets->handle_rw_locks[i_bucket]));

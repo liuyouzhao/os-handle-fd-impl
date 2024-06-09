@@ -1,5 +1,5 @@
 # Prefix platform
-PLATFORM=x86
+PLATFORM=linux
 BUILD=build
 BOARD       =
 CPU         =
@@ -20,10 +20,15 @@ LDIR2 =
 # output binary path
 OUT = out
 OUT_DIR = ./$(OUT)/$(PLATFORM)
-OUT_BIN = output
+OUT_BIN = main
 
 # compiling and linking flags
-C_CFLAGS += -I./ -Os
+C_CFLAGS += -I./src/include
+C_CFLAGS += -I./src/include/arch/$(PLATFORM)
+C_CFLAGS += -I./src/include/kernel
+C_CFLAGS += -I./src/include/lib 
+C_CFLAGS += -I./src/tests
+C_CFLAGS += -Os
 AFLAGS=
 CFLAGS= $(C_CFLAGS)
-LDFLAGS = -lc -lm 
+LDFLAGS = -lc -lm -lpthread

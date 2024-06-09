@@ -144,19 +144,19 @@ __TST_START__
 
     for(i = 0; i < w_siz; i ++) {
         task_destroy(tid_x[i]);
-        printf("\t W_Task_X[%d] Passed.\n", tid_x[i]);
+        printf("\t W_Task_X[%lu] Passed.\n", tid_x[i]);
         fflush(stdout);
         task_destroy(tid_y[i]);
-        printf("\t W_Task_Y[%d] Passed.\n", tid_y[i]);
+        printf("\t W_Task_Y[%lu] Passed.\n", tid_y[i]);
         fflush(stdout);
         task_destroy(tid_z[i]);
-        printf("\t W_Task_Z[%d] Passed.\n", tid_z[i]);
+        printf("\t W_Task_Z[%lu] Passed.\n", tid_z[i]);
         fflush(stdout);
     }
 
     for(i = 0; i < r_siz; i ++) {
         task_destroy(tid_r[i]);
-        printf("\t R_Task[%d] Passed.\n", tid_r[i]);
+        printf("\t R_Task[%lu] Passed.\n", tid_r[i]);
         fflush(stdout);
     }
 

@@ -1,6 +1,12 @@
 ## build
 /build
-
+/out
 
 ## swp
 *.swp
+
+## exec
+exec
+output
+test_bin
+main
