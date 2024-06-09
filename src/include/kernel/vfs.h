@@ -21,7 +21,10 @@ typedef struct vfs_handle_s {
 typedef struct vfs_handle_bucket_s {
 
     vfs_handle_t** handles;
+
+#if ARCH_CONF_SUB_TASK_ENABLE
     arch_rw_lock_t* handle_rw_locks;
+#endif
 
 } vfs_handle_bucket_t;
 

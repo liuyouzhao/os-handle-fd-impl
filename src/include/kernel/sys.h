@@ -8,10 +8,11 @@ void sys_init();
 int sys_open(tsk_id_t tid, const char* path, unsigned int mode);
 int sys_close(tsk_id_t tid, int fd);
 int sys_read(tsk_id_t tid, int fd, char *buf, size_t len, unsigned long* pos);
+int sys_seek(tsk_id_t tid, int fd, unsigned long pos);
 int sys_write(tsk_id_t tid, int fd, const char *buf, size_t len, unsigned long pos);
+
 
 /// for tests only
 int sys_vfs_ref_count(tsk_id_t tid, int fd);
-
 void panic();
 #endif // SYS_H

@@ -30,8 +30,13 @@ SOURCES += \
         src/tests/lib/test_dentry.c \
         src/tests/lib/test_hash.c \
         src/tests/lib/test_queue.c \
-        src/tests/test_read_write_sanity.c \
-        src/tests/test_sys_open_close_concurrent.c \
+        src/tests/test_open_close_concurrency.c \
+        src/tests/test_r1w3_subtasks_1.c \
+        src/tests/test_r1w3_subtasks_2.c \
+        src/tests/test_rlock_concurrency_1.c \
+        src/tests/test_rw_sanity.c \
+        src/tests/test_rwlock_concurrency_1.c \
+        src/tests/test_rwlock_concurrency_2.c \
         src/tests/test_task_create.c \
         src/tests/test_vfs_file_create.c \
         src/tests/test_vfs_file_search.c \
@@ -46,3 +51,6 @@ INCLUDEPATH += \
         src/tests/
 
 LIBS += -lpthread
+
+DISTFILES += \
+    src/tests/aa

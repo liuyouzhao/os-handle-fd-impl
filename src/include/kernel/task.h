@@ -16,7 +16,7 @@ typedef struct task_struct_s {
 
     queue_t* ts_recyc_fds; /// recycled fds
 
-    arch_lock_t ts_lock; /// task scope lock
+    arch_rw_lock_t ts_rw_lock; /// task scope lock
 
     atomic_long_t ts_open_fds; // open fds count
 } task_struct_t;
