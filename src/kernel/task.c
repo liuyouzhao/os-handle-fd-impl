@@ -115,18 +115,19 @@ int task_create(tsk_id_t* out_task_id, void *(*func)(void*)) {
     }
     task->ts_tid = task_id;
     *out_task_id = task_id;
+
+    s_sys_task_manager.tasks[task_id] = task;
     if(__start_task(task_id, &prv_tid, func)) {
         fprintf(stderr, "Task creation failed, collision of kernel error. tid=");
 
         arch_spin_unlock(&(s_sys_task_manager.lock));
         __task_free(&task);
+        s_sys_task_manager.tasks[task_id] = NULL;
         return -1;
     }
     task->ts_priv_tid = prv_tid;
 
-    s_sys_task_manager.tasks[task_id] = task;
     arch_spin_unlock(&(s_sys_task_manager.lock));
-
     return 0;
 }
 
@@ -135,8 +136,16 @@ int task_destroy(tsk_id_t task_id) {
     return 0;
 }
 
-int task_get_open_fd_num(tsk_id_t task_id) {
-    task_struct_t* task = task_manager_get_task(task_id);
+void task_manager_wait_all_tasks() {
+    int i = 0;
+    int count = task_manager_get_count();
+    for(; i < count; i ++) {
+        arch_join(s_sys_task_manager.tasks[i]->ts_priv_tid);
+    }
+}
+
+void task_manager_wait_one_task(tsk_id_t task_id) {
+    arch_join(s_sys_task_manager.tasks[task_id]->ts_priv_tid);
 }
 
 /**

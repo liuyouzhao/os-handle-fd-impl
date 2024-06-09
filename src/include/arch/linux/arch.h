@@ -47,6 +47,7 @@ void arch_panic();
 void arch_signal_kill();
 
 int arch_task_create(void *(*func)(void*), unsigned long* private_tid, void* args);
+int arch_join(unsigned long priv_tid);
 unsigned long arch_task_get_private_tid();
 
 //// Arch configs

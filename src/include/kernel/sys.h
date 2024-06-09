@@ -10,5 +10,8 @@ int sys_close(tsk_id_t tid, int fd);
 int sys_read(tsk_id_t tid, int fd, char *buf, size_t len, unsigned long* pos);
 int sys_write(tsk_id_t tid, int fd, const char *buf, size_t len, unsigned long pos);
 
+/// for tests only
+int sys_vfs_ref_count(tsk_id_t tid, int fd);
+
 void panic();
 #endif // SYS_H

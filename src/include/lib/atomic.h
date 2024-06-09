@@ -12,7 +12,7 @@ typedef struct {
 typedef atomic_t atomic_long_t;
 
 #define atomic_init(v) (__atomic_init(v))
-#define atomic_inc_limit(v, l) (__atomic_add_return(   1, (v)  ))
+#define atomic_inc_limit(v, l) (__atomic_add_return_limit(   1, l, (v)  ))
 #define atomic_inc(v) (__atomic_add_return(   1, (v)  ))
 #define atomic_dec(v) (__atomic_add_return(  -1, (v)  ))
 #define atomic_read(v) (__atomic_read(v))

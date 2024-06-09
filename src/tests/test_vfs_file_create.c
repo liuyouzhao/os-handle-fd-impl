@@ -5,7 +5,7 @@
 #include "vfs.h"
 #include "test_def.h"
 
-void test_create_many_files_success() {
+void test_create_many_files() {
     __TST_START__
 
     int i = 0;
@@ -23,12 +23,10 @@ void test_create_many_files_success() {
         assert(VFS_PA2P(file_ptr_address)->private_data != NULL);
     }
 
-    vfs_files_hash_dump();
-
     __TST_PASSED__
 }
 
-void test_same_file_reference_success() {
+void test_same_file_reference() {
 __TST_START__
 
     int i = 0;
@@ -49,8 +47,8 @@ __TST_START__
     assert(VFS_PA2P(file_dup_ptr_address) == VFS_PA2P(file_ptr_address));
     assert(VFS_PA2P(file_dup_ptr_address)->private_data == VFS_PA2P(file_ptr_address)->private_data);
     assert(VFS_PA2P(file_dup_ptr_address)->f_len == VFS_PA2P(file_ptr_address)->f_len);
-    assert(1 == atomic_read(&(VFS_PA2P(file_dup_ptr_address)->f_ref_count)));
-    assert(1 == atomic_read(&(VFS_PA2P(file_ptr_address)->f_ref_count)));
+    assert(2 == (atomic_read(&(VFS_PA2P(file_dup_ptr_address)->f_ref_count))));
+    assert(2 == atomic_read(&(VFS_PA2P(file_ptr_address)->f_ref_count)));
     assert(&(VFS_PA2P(file_ptr_address)->f_rw_lock._mutex) == &(VFS_PA2P(file_dup_ptr_address)->f_rw_lock._mutex));
     assert(&(VFS_PA2P(file_ptr_address)->f_rw_lock._rw_mutex) == &(VFS_PA2P(file_dup_ptr_address)->f_rw_lock._rw_mutex));
 
@@ -60,8 +58,8 @@ __TST_START__
     assert(VFS_PA2P(file_dup_ptr_address) == VFS_PA2P(file_ptr_address));
     assert(VFS_PA2P(file_dup_ptr_address)->private_data == VFS_PA2P(file_ptr_address)->private_data);
     assert(VFS_PA2P(file_dup_ptr_address)->f_len == VFS_PA2P(file_ptr_address)->f_len);
-    assert(1 == atomic_read(&(VFS_PA2P(file_dup_ptr_address)->f_ref_count)));
-    assert(1 == atomic_read(&(VFS_PA2P(file_ptr_address)->f_ref_count)));
+    assert(3 == atomic_read(&(VFS_PA2P(file_dup_ptr_address)->f_ref_count)));
+    assert(3 == atomic_read(&(VFS_PA2P(file_ptr_address)->f_ref_count)));
     assert(&(VFS_PA2P(file_ptr_address)->f_rw_lock._mutex) == &(VFS_PA2P(file_dup_ptr_address)->f_rw_lock._mutex));
     assert(&(VFS_PA2P(file_ptr_address)->f_rw_lock._rw_mutex) == &(VFS_PA2P(file_dup_ptr_address)->f_rw_lock._rw_mutex));
 
@@ -72,14 +70,12 @@ __TST_START__
         assert(VFS_PA2P(file_dup_ptr_address) == VFS_PA2P(file_ptr_address));
         assert(VFS_PA2P(file_dup_ptr_address)->private_data == VFS_PA2P(file_ptr_address)->private_data);
         assert(VFS_PA2P(file_dup_ptr_address)->f_len == VFS_PA2P(file_ptr_address)->f_len);
-        assert(1 == atomic_read(&(VFS_PA2P(file_dup_ptr_address)->f_ref_count)));
-        assert(1 == atomic_read(&(VFS_PA2P(file_ptr_address)->f_ref_count)));
+        assert(4 + i == atomic_read(&(VFS_PA2P(file_dup_ptr_address)->f_ref_count)));
+        assert(4 + i == atomic_read(&(VFS_PA2P(file_ptr_address)->f_ref_count)));
         assert(&(VFS_PA2P(file_ptr_address)->f_rw_lock._mutex) == &(VFS_PA2P(file_dup_ptr_address)->f_rw_lock._mutex));
         assert(&(VFS_PA2P(file_ptr_address)->f_rw_lock._rw_mutex) == &(VFS_PA2P(file_dup_ptr_address)->f_rw_lock._rw_mutex));
 
     }
-
-    vfs_files_hash_dump();
 
 __TST_PASSED__
 }

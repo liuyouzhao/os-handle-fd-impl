@@ -86,6 +86,9 @@ int vfs_file_get_or_create(const char* path, unsigned long* file_ptr_addr, int c
 
     /// found
     if(*file_ptr_addr) {
+        ptr_file = VFS_PA2P(*file_ptr_addr);
+        /// reference + 1, initially ref==1
+        atomic_inc(&(ptr_file->f_ref_count));
         return 0;
     }
     else if(!create) {
@@ -101,6 +104,7 @@ int vfs_file_get_or_create(const char* path, unsigned long* file_ptr_addr, int c
 
     /// TODO: init the private_ptr by driver implementation
     ptr_file->private_data = (char*) malloc(4096);
+    ptr_file->f_len = 4096;
 
     /// insert to hashmap
     /// Before insert, the file->ref > 0 already, the kernel task won't release it.

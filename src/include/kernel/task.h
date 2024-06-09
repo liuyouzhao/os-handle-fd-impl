@@ -32,6 +32,8 @@ typedef struct task_manager_s {
 int task_manager_init();
 void task_manager_dump_tasks();
 int task_manager_get_count();
+void task_manager_wait_all_tasks();
+void task_manager_wait_one_task(tsk_id_t task_id);
 task_struct_t* task_manager_get_task_list();
 task_struct_t* task_manager_get_task(tsk_id_t task_id);
 int task_create(tsk_id_t* task_id, void *(*func)(void*));

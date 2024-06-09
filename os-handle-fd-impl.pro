@@ -30,8 +30,8 @@ SOURCES += \
         src/tests/lib/test_dentry.c \
         src/tests/lib/test_hash.c \
         src/tests/lib/test_queue.c \
-        src/tests/test_file_open.c \
-        src/tests/test_sys_open.c \
+        src/tests/test_read_write_sanity.c \
+        src/tests/test_sys_open_close_concurrent.c \
         src/tests/test_task_create.c \
         src/tests/test_vfs_file_create.c \
         src/tests/test_vfs_file_search.c \

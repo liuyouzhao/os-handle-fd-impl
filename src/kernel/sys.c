@@ -128,9 +128,8 @@ int sys_open(tsk_id_t tid, const char* path, unsigned int mode) {
     vfs_handle_t* ptr_handle;
     unsigned long file_ptr_addr;
 
-    if( !tsk ||
-        tsk->ts_priv_tid != arch_task_get_private_tid() ||
-        tsk->ts_lfd.counter >= ARCH_VFS_FDS_MAX ) {
+    if( tsk->ts_lfd.counter >= ARCH_VFS_FDS_MAX ) {
+        fprintf(stderr, "File %s open failed, fds exceed limit\n", path);
         return -1;
     }
 
@@ -215,6 +214,7 @@ int sys_close(tsk_id_t tid, int fd) {
     /// So if considering sub tasks parallism, handle lock is needed.
     if(__detach_handle(task, fd)) {
         /// fd not found(not an open fd)
+        perror("fd is not valid\n");
         return -1;
     }
 
@@ -227,11 +227,17 @@ int sys_close(tsk_id_t tid, int fd) {
 
 
 int sys_read(tsk_id_t tid, int fd, char *buf, size_t len, unsigned long* pos) {
-    task_struct_t* task = task_manager_get_task(tid);
-    vfs_handle_t** ptr_ptr_handle = __search_handle(task, fd);
+    task_struct_t* task;
+    vfs_handle_t** ptr_ptr_handle;
+    if(!pos) {
+        return -1;
+    }
+    task = task_manager_get_task(tid);
+    ptr_ptr_handle = __search_handle(task, fd);
     int tmp_pos = 0;
-    int rt = 0;
+    int rt = -1;
     if ( !(*ptr_ptr_handle) ) {
+        perror("fd handle is null\n");
         return -1;
     }
 
@@ -262,8 +268,8 @@ int sys_read(tsk_id_t tid, int fd, char *buf, size_t len, unsigned long* pos) {
 
         *pos = (*ptr_ptr_handle)->read_pos;
     }
-
     arch_rw_unlock_r(&(task->ts_handle_buckets->handle_rw_locks[fd]));
+    return rt;
 #else
     rt = vfs_read(VFS_PA2P((*ptr_ptr_handle)->ptr_ptr_file_addr), buf, len, (*ptr_ptr_handle)->read_pos);
 
@@ -272,7 +278,6 @@ int sys_read(tsk_id_t tid, int fd, char *buf, size_t len, unsigned long* pos) {
         *pos = (*ptr_ptr_handle)->read_pos;
     }
 #endif
-
     return rt;
 }
 
@@ -298,6 +303,16 @@ int sys_write(tsk_id_t tid, int fd, const char *buf, size_t len, unsigned long p
     rt = vfs_write(VFS_PA2P((*ptr_ptr_handle)->ptr_ptr_file_addr), buf, len, pos);
 #endif
     return rt;
+}
+
+int sys_vfs_ref_count(tsk_id_t tid, int fd) {
+    task_struct_t* task = task_manager_get_task(tid);
+    vfs_handle_t** ptr_ptr_handle = __search_handle(task, fd);
+    if(!ptr_ptr_handle || !(*ptr_ptr_handle)) {
+        return 0;
+    }
+    vfs_file_t* file = VFS_PA2P((*ptr_ptr_handle)->ptr_ptr_file_addr);
+    return file->f_ref_count.counter;
 }
 
 void sys_init() {

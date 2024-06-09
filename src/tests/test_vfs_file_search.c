@@ -3,8 +3,8 @@
 #include "vfs.h"
 #include "test_def.h"
 
-void test_file_search_success() {
-__TST_START_DEP__("test_create_many_files_success")
+void test_file_search() {
+__TST_START_DEP__("test_create_many_files")
     int i = 0;
     vfs_file_t *file = NULL;
     char filename[256] = {0};

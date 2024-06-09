@@ -6,7 +6,7 @@
 typedef unsigned long __t_hv_t;
 
 
-void test_hash_function_pass() {
+void test_hash_function() {
 __TST_START__
     hash_map_t* map = hash_map_create(16);
     __t_hv_t ptr0_addr;

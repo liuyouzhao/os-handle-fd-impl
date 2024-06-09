@@ -6,13 +6,15 @@
 #include "task.h"
 #include "test_def.h"
 
-void test_hash_function_pass();
-void test_task_create_one_success();
-void test_task_create_three_success();
-void test_task_create_many_success();
-void test_create_many_files_success();
-void test_same_file_reference_success();
-void test_file_search_success();
+void test_hash_function();
+void test_task_create_one();
+void test_task_create_three();
+void test_task_create_many();
+void test_create_many_files();
+void test_same_file_reference();
+void test_file_search();
+void test_sys_open_1_fds_in_many_tasks();
+void test_read_write_single_task_sanity();
 
 int main(int argn, char** argc)
 {
@@ -23,17 +25,23 @@ int main(int argn, char** argc)
 
     task_manager_dump_tasks();
 
-    test_hash_function_pass();
+    test_hash_function();
 
-    test_task_create_one_success();
-    test_task_create_three_success();
-    test_task_create_many_success();
+    test_task_create_one();
+    test_task_create_three();
+    test_task_create_many();
 
-    test_create_many_files_success();
-    test_same_file_reference_success();
-    test_file_search_success();
+    test_create_many_files();
+    test_same_file_reference();
+    test_file_search();
+
+    //test_sys_open_1_fds_in_many_tasks();
+
+    test_read_write_single_task_sanity();
 
     fflush(stdout);
-    sleep(3);
+
+    task_manager_wait_all_tasks();
+
     return 0;
 }

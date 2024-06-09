@@ -69,6 +69,10 @@ unsigned long arch_task_get_private_tid() {
     return pthread_self();
 }
 
+int arch_join(unsigned long priv_tid) {
+    return pthread_join(priv_tid, NULL);
+}
+
 void arch_signal_kill() {
     pthread_kill(pthread_self(), SIGUSR1);
 }
