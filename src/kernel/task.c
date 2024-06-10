@@ -76,9 +76,23 @@ __S_PURE__ task_struct_t* __task_alloc() {
     return __tsk;
 }
 
-task_struct_t* __task_free(task_struct_t** task) {
+void __task_free(task_struct_t** task) {
     task_struct_t* ptr_task = *task;
+    unsigned long i = 0;
+    for(; i < ARCH_VFS_FDS_MAX; i ++) {
+        arch_rw_lock_destroy(&(ptr_task->ts_handle_buckets->handle_rw_locks[i]));
+    }
+    free(ptr_task->ts_handle_buckets->handle_rw_locks);
+    for(i = 0; i < ARCH_VFS_FDS_PER_BUCKET; i ++) {
+        if(ptr_task->ts_handle_buckets->handles[i]) {
+            arch_spin_lock_destroy(&(ptr_task->ts_handle_buckets->handles[i]->read_pos_lock));
+            free(ptr_task->ts_handle_buckets->handles[i]);
+        }
+    }
+    free(ptr_task->ts_handle_buckets->handles);
+    ptr_task->ts_handle_buckets->handles = NULL;
     free(ptr_task->ts_handle_buckets);
+    ptr_task->ts_handle_buckets = NULL;
     queue_clean_queue(&(ptr_task->ts_recyc_fds));
     free(ptr_task);
     *task = NULL;

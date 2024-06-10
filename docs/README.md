@@ -377,27 +377,9 @@ Linux by default has maximum process number of 32768, means the maximum number o
 But using a dynamic array will be much better.
 
 
-2. Other Significant Concerns
+2. Code & Project
 
-2.1 Better data structure.
-
-All directly indexed linear structure should be Dynamically Growing Array.
-This will save the memory during intitial stages and the searching time cost is still low.
-
-2.2 Asynchroniously store un-used memory(buckets/handles) into cache.
- 
-In this system, there are 2 places using calloc which is slower than malloc and keep it dirty.
-However, in real scenarios, these memory will not be released very frequently. Once allocated, system should
-keep it as re-usable. Because this memory management system is complex, this assignment did not implement this part.
-
-2.3 More Benchmark and Performance testing.
-
-In actual projects, better benchmark and performance toolkits and libs must be developed or involved.
-
-
-3. Code & Project
-
-3.1 Folders
+2.1 Folders
 └── src
     ├── arch
     │   └── linux
@@ -443,7 +425,7 @@ sys.c open/read/write/close
 vfs.c file/handle 
 task.c task/task_manager 
 
-3.2 Build & Tests
+2.2 Build & Tests
 Use make command under the project folder.
 
 make
@@ -486,6 +468,45 @@ strace ./main
 The tests will overall start 2000 tasks, trustling tests include 10k read&write per task.
 See test_rlock_concurrency_1.c::test_rlock_same_file_from_many_tasks
 
+
+2.3 sys_open/read/write usage
+sys_open(tid, "/dev/devtest/same_block", RW_CREATE);
+sys_read(tid, fd, buf_read, siz, &pos);
+sys_write(tid, fd, buf_write, siz, pos);
+
+
+3. Not Done Part
+There are some parts not being finished perfectly.
+
+3.1 The task_destroy method sometimes trigger futex errors. I'm still trying to figure out.
+    However, task management and arch layer are not what the assignment focuses on.
+
+3.2 Driver extension mode. I really like the driver dev block ioctl extension mode the linux kernel provided.
+    However, this part needs extra design and effort. May not be done in this assignment.
+
+3.3 Reading and writing mode, blocking mode, non-blocking mode, sync mode, aync mode, etc.
+    This is very complex and also related to multiplexing.
+
+3.4 System lifetime management. This system has not much lifespan runtime management being done.
+    Ideally, the kernel threads play some important roles. 
+
+
+4. Other Significant Concerns
+
+4.1 Better data structure.
+
+All directly indexed linear structure should be Dynamically Growing Array.
+This will save the memory during intitial stages and the searching time cost is still low.
+
+4.2 Asynchroniously store un-used memory(buckets/handles) into cache.
+ 
+In this system, there are 2 places using calloc which is slower than malloc and keep it dirty.
+However, in real scenarios, these memory will not be released very frequently. Once allocated, system should
+keep it as re-usable. Because this memory management system is complex, this assignment did not implement this part.
+
+4.3 More Benchmark and Performance testing.
+
+In actual projects, better benchmark and performance toolkits and libs must be developed or involved.
 
 
 

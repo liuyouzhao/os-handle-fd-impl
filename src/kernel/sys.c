@@ -231,7 +231,6 @@ int sys_close(tsk_id_t tid, int fd) {
 int sys_read(tsk_id_t tid, int fd, char *buf, size_t len, unsigned long* pos) {
     task_struct_t* task;
     vfs_handle_t** ptr_ptr_handle;
-    int i_bucket = __get_bucket_index(fd);
     if(!pos) {
         return -1;
     }
@@ -307,7 +306,6 @@ int sys_seek(tsk_id_t tid, int fd, unsigned long pos) {
 }
 
 int sys_write(tsk_id_t tid, int fd, const char *buf, size_t len, unsigned long pos) {
-    int i_bucket = __get_bucket_index(fd);
     task_struct_t* task = task_manager_get_task(tid);
     vfs_handle_t** ptr_ptr_handle = __search_handle(task, fd);
     int rt = 0;
