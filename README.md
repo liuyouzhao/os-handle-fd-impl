@@ -209,7 +209,7 @@ Investing handle level rw_locks.
 
 ```c
 Tasks  sub-tasks    Buckets      Handles        lock_w
-task1                                   |
+task1                                           |
 	|sub-task1| -> |bucket1| -> [fd0<rw_lock>] -> [fd1] -> ... -> [fdk]
                        |bucket2| -> [fdk+1] -> ..  -> [fdn]
 		        ...
