@@ -8,6 +8,8 @@
 #include "test_def.h"
 #include <stdlib.h>
 
+__tst_define__
+
 #define TEST_BLK_RW_SIZ  1024
 
 static tsk_id_t cross_tid = 9999;
@@ -57,6 +59,8 @@ static void* task_execute_read(void* param) {
         expect_pos = 0;
         usleep(1000 * 200);
     }
+
+    __tst_follower_done__
 }
 
 static void* task_execute_func_X(void* param) {
@@ -83,6 +87,8 @@ static void* task_execute_func_X(void* param) {
         }
         usleep(11);
     }
+
+    __tst_follower_done__
 }
 
 static void* task_execute_func_Y(void* param) {
@@ -111,6 +117,8 @@ static void* task_execute_func_Y(void* param) {
         }
         usleep(10);
     }
+
+    __tst_follower_done__
 }
 
 static void* task_execute_func_Z(void* param) {
@@ -139,6 +147,8 @@ static void* task_execute_func_Z(void* param) {
         }
         usleep(10);
     }
+
+    __tst_follower_done__
 }
 
 /**
@@ -157,6 +167,8 @@ __TST_START__
     tsk_id_t tid_z;
     tsk_id_t tid_r;
 
+    __tst_follower_init__
+
     arch_spin_lock_init(&lock);
 
     rt = task_create(&tid_x, task_execute_func_X);
@@ -171,12 +183,7 @@ __TST_START__
     rt = task_create(&tid_r, task_execute_read);
     assert(rt == 0);
 
-
-    task_destroy(tid_y);
-    task_destroy(tid_z);
-    task_destroy(tid_r);
-    /// destoy shared tasks at last
-    task_destroy(tid_x);
+    __tst_follower_wait__(4)
 
     arch_spin_lock_destroy(&lock);
 

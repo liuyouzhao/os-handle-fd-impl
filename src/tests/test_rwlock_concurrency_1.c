@@ -8,6 +8,9 @@
 #include "test_def.h"
 #include <stdlib.h>
 
+
+__tst_define__
+
 static void* task_execute_read(void* param) {
     tsk_id_t tid = (tsk_id_t) param;
     char buf_read[8] = {0};
@@ -29,8 +32,6 @@ static void* task_execute_read(void* param) {
     while(run) {
         run = 0;
         while((rt = sys_read(tid, fd, buf_read, 7, &pos)) > 0) {
-            printf("%s|", buf_read);
-            fflush(stdout);
             assert(strncmp(buf_read, buf_read_expect_x, rt) == 0
                    ||
                    strncmp(buf_read, buf_read_expect_y, rt) == 0
@@ -45,12 +46,14 @@ static void* task_execute_read(void* param) {
             expect_pos += rt;
             assert(expect_pos == pos);
         }
-        printf("\n\n\n");
-        fflush(stdout);
         sys_seek(tid, fd, 0);
         expect_pos = 0;
         usleep(1000 * 100);
     }
+
+    __tst_follower_done__
+
+    return NULL;
 }
 
 static void* task_execute_func_X(void* param) {
@@ -66,6 +69,10 @@ static void* task_execute_func_X(void* param) {
         /// wait 10ms
         usleep(1000 * 15);
     }
+
+    __tst_follower_done__
+
+    return NULL;
 }
 
 static void* task_execute_func_Y(void* param) {
@@ -81,6 +88,10 @@ static void* task_execute_func_Y(void* param) {
         /// wait 10ms
         usleep(1000 * 12);
     }
+
+    __tst_follower_done__
+
+    return NULL;
 }
 
 static void* task_execute_func_Z(void* param) {
@@ -96,11 +107,17 @@ static void* task_execute_func_Z(void* param) {
         /// wait 10ms
         usleep(1000 * 10);
     }
+
+    __tst_follower_done__
+
+    return NULL;
 }
 
 
 void test_read_write_same_file_from_4_tasks_1() {
 __TST_START__
+
+    __tst_follower_init__
 
     int rt = -1;
     tsk_id_t tid_x;
@@ -117,10 +134,7 @@ __TST_START__
     rt = task_create(&tid_r, task_execute_read);
     assert(rt == 0);
 
-    task_destroy(tid_x);
-    task_destroy(tid_y);
-    task_destroy(tid_z);
-    task_destroy(tid_r);
+    __tst_follower_wait__(4)
 
 __TST_PASSED__
 }

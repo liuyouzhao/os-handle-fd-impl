@@ -30,9 +30,6 @@ typedef struct vfs_handle_bucket_s {
 
 } vfs_handle_bucket_t;
 
-/**
- * global shared file structure
- */
 typedef struct vfs_file_s {
 
     char* path;
@@ -44,9 +41,6 @@ typedef struct vfs_file_s {
 
 } vfs_file_t;
 
-/**
- * global hashmap
- */
 typedef struct vfs_sys_s {
 
     hash_map_t* vfs_files_map;

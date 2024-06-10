@@ -1,12 +1,10 @@
 #include <assert.h>
-#include <string.h>
 #include <unistd.h>
-#include "hash.h"
 #include "sys.h"
-#include "vfs.h"
 #include "task.h"
 #include "test_def.h"
-#include <stdlib.h>
+
+__tst_define__
 
 static void* task_execute_func(void* param) {
     tsk_id_t tid = (tsk_id_t) param;
@@ -15,6 +13,8 @@ static void* task_execute_func(void* param) {
 
     sleep(1);
     assert(sys_close(tid, fd) == 0);
+
+    __tst_follower_done__
 }
 
 
@@ -26,15 +26,14 @@ __TST_START__
     const int task_count = 1024;
     tsk_id_t tids[task_count];
 
+    __tst_follower_init__
+
     for(; i < task_count; i ++) {
         rt = task_create(&tids[i], task_execute_func);
         assert(rt == 0);
     }
 
-    i = 0;
-    for(; i < task_count; i ++) {
-        task_destroy(tids[i]);
-    }
+    __tst_follower_wait__(task_count)
 
 __TST_PASSED__
 }

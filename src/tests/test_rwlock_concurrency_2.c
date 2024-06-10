@@ -10,6 +10,8 @@
 
 #define TEST_BLK_RW_SIZ  1024
 
+__tst_define__
+
 static void* task_execute_read(void* param) {
     tsk_id_t tid = (tsk_id_t) param;
     char buf_read[TEST_BLK_RW_SIZ + 1] = {0};
@@ -43,8 +45,9 @@ static void* task_execute_read(void* param) {
         }
         sys_seek(tid, fd, 0);
         expect_pos = 0;
-        usleep(1000 * 200);
     }
+
+    __tst_follower_done__
 }
 
 static void* task_execute_func_X(void* param) {
@@ -65,8 +68,9 @@ static void* task_execute_func_X(void* param) {
             pos = 0;
             rounds --;
         }
-        usleep(11);
     }
+
+    __tst_follower_done__
 }
 
 static void* task_execute_func_Y(void* param) {
@@ -86,8 +90,9 @@ static void* task_execute_func_Y(void* param) {
             pos = 0;
             rounds --;
         }
-        usleep(10);
     }
+
+    __tst_follower_done__
 }
 
 static void* task_execute_func_Z(void* param) {
@@ -108,8 +113,9 @@ static void* task_execute_func_Z(void* param) {
             pos = 0;
             rounds --;
         }
-        usleep(10);
     }
+
+    __tst_follower_done__
 }
 
 /**
@@ -118,6 +124,7 @@ static void* task_execute_func_Z(void* param) {
  */
 void test_read_write_same_file_from_4_tasks_2() {
 __TST_START__
+    __tst_follower_init__
 
     int rt = -1;
     tsk_id_t tid_x;
@@ -134,10 +141,6 @@ __TST_START__
     rt = task_create(&tid_r, task_execute_read);
     assert(rt == 0);
 
-    task_destroy(tid_x);
-    task_destroy(tid_y);
-    task_destroy(tid_z);
-    task_destroy(tid_r);
-
+    __tst_follower_wait__(4)
 __TST_PASSED__
 }

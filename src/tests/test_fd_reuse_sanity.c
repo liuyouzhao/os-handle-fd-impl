@@ -9,6 +9,8 @@
 
 #define __TEST_BUF_SIZ 256
 
+__tst_define__
+
 static void* single_task_open_close_fd_reuse(void* param) {
     tsk_id_t tid = (tsk_id_t) param;
     const int test_fds = 512;
@@ -29,6 +31,10 @@ static void* single_task_open_close_fd_reuse(void* param) {
         tmp_fd = sys_open(tid, "/dev/devtest/sys_open_test_dev1", 1);
         assert(tmp_fd == fds[i]);
     }
+
+    __tst_follower_done__
+
+    return NULL;
 }
 
 void test_fd_reuse() {
@@ -37,10 +43,12 @@ void test_fd_reuse() {
     tsk_id_t _tid;
     int rt = -1;
 
+    __tst_follower_init__
+
     rt = task_create(&_tid, single_task_open_close_fd_reuse);
     assert(rt == 0);
-    task_destroy(_tid);
 
+    __tst_follower_wait__(1)
 
     __TST_PASSED__
 }

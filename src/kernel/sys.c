@@ -69,7 +69,7 @@ static int __detach_handle(task_struct_t* task, int fd) {
 #if ARCH_CONF_SUB_TASK_ENABLE
 
         /// handle w lock
-        arch_rw_lock_w(&(task->ts_handle_buckets->handle_rw_locks[i_bucket]));
+        arch_rw_lock_w(&(task->ts_handle_buckets->handle_rw_locks[fd]));
 
         /// store the private address
         priv_ptr_address = (*ptr_ptr_handle)->ptr_ptr_file_addr;
@@ -83,7 +83,7 @@ static int __detach_handle(task_struct_t* task, int fd) {
         }
 
         /// handle w unlock
-        arch_rw_unlock_w(&(task->ts_handle_buckets->handle_rw_locks[i_bucket]));
+        arch_rw_unlock_w(&(task->ts_handle_buckets->handle_rw_locks[fd]));
 
         /// recycle this detached fd to queue
         queue_enqueue(task->ts_recyc_fds, fd);
@@ -173,7 +173,7 @@ int sys_open(tsk_id_t tid, const char* path, unsigned int mode) {
         /// bucket w lock, re-use the first handle of its bucket as bucket lock
         /// TODO: Optimize using independent bucket locks
         /// re-using handle lock lets the first fd reading/writing be blocked during fd association.
-        arch_rw_lock_w(&(tsk->ts_handle_buckets->handle_rw_locks[i_bucket]));
+        arch_rw_lock_w(&(tsk->ts_handle_buckets->handle_rw_locks[i_bucket * ARCH_VFS_FDS_PER_BUCKET]));
 
         /// double lookup after acquired lock
         if(!ptr_bucket->handles) {
@@ -181,7 +181,7 @@ int sys_open(tsk_id_t tid, const char* path, unsigned int mode) {
         }
 
         /// bucket w unlock
-        arch_rw_unlock_w(&(tsk->ts_handle_buckets->handle_rw_locks[i_bucket]));
+        arch_rw_unlock_w(&(tsk->ts_handle_buckets->handle_rw_locks[i_bucket * ARCH_VFS_FDS_PER_BUCKET]));
 #else
         ptr_bucket->handles = (vfs_handle_t**) calloc(ARCH_VFS_FDS_PER_BUCKET, sizeof(vfs_handle_t*));
 #endif
@@ -200,12 +200,12 @@ int sys_open(tsk_id_t tid, const char* path, unsigned int mode) {
 #if ARCH_CONF_SUB_TASK_ENABLE
 
     /// handle w lock
-    arch_rw_lock_w(&(tsk->ts_handle_buckets->handle_rw_locks[i_bucket]));
+    arch_rw_lock_w(&(tsk->ts_handle_buckets->handle_rw_locks[nfd]));
 
     ptr_bucket->handles[i_handle] = ptr_handle;
 
     /// handle w unlock
-    arch_rw_unlock_w(&(tsk->ts_handle_buckets->handle_rw_locks[i_bucket]));
+    arch_rw_unlock_w(&(tsk->ts_handle_buckets->handle_rw_locks[nfd]));
 
 #else
     ptr_bucket->handles[i_handle] = ptr_handle;
@@ -246,7 +246,7 @@ int sys_read(tsk_id_t tid, int fd, char *buf, size_t len, unsigned long* pos) {
 
 #if ARCH_CONF_SUB_TASK_ENABLE
 
-    arch_rw_lock_r(&(task->ts_handle_buckets->handle_rw_locks[i_bucket]));
+    arch_rw_lock_r(&(task->ts_handle_buckets->handle_rw_locks[fd]));
 
     /// double lookup after lock acquired
     /// Still not NULL, then read
@@ -272,7 +272,7 @@ int sys_read(tsk_id_t tid, int fd, char *buf, size_t len, unsigned long* pos) {
 
         *pos = (*ptr_ptr_handle)->read_pos;
     }
-    arch_rw_unlock_r(&(task->ts_handle_buckets->handle_rw_locks[i_bucket]));
+    arch_rw_unlock_r(&(task->ts_handle_buckets->handle_rw_locks[fd]));
 
     return rt;
 #else
@@ -313,7 +313,7 @@ int sys_write(tsk_id_t tid, int fd, const char *buf, size_t len, unsigned long p
     }
 
 #if ARCH_CONF_SUB_TASK_ENABLE
-    arch_rw_lock_r(&(task->ts_handle_buckets->handle_rw_locks[i_bucket]));
+    arch_rw_lock_r(&(task->ts_handle_buckets->handle_rw_locks[fd]));
 
     /// double lookup after lock acquired
     /// Still not NULL, then read
@@ -321,7 +321,7 @@ int sys_write(tsk_id_t tid, int fd, const char *buf, size_t len, unsigned long p
         rt = vfs_write(VFS_PA2P((*ptr_ptr_handle)->ptr_ptr_file_addr), (char*)buf, len, pos);
     }
 
-    arch_rw_unlock_r(&(task->ts_handle_buckets->handle_rw_locks[i_bucket]));
+    arch_rw_unlock_r(&(task->ts_handle_buckets->handle_rw_locks[fd]));
 #else
     rt = vfs_write(VFS_PA2P((*ptr_ptr_handle)->ptr_ptr_file_addr), buf, len, pos);
 #endif

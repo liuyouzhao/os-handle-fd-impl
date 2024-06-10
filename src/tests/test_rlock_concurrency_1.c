@@ -8,7 +8,10 @@
 #include "test_def.h"
 #include <stdlib.h>
 
+__tst_define__
+
 #define TEST_BLK_RW_SIZ  1024
+
 
 static void* task_execute_read(void* param) {
     tsk_id_t tid = (tsk_id_t) param;
@@ -48,6 +51,8 @@ static void* task_execute_read(void* param) {
         sys_seek(tid, fd, 0);
         expect_pos = 0;
     }
+
+    __tst_follower_done__
 }
 
 static void* task_execute_func_X(void* param) {
@@ -69,6 +74,8 @@ static void* task_execute_func_X(void* param) {
             rounds --;
         }
     }
+
+    __tst_follower_done__
 }
 
 static void* task_execute_func_Y(void* param) {
@@ -89,6 +96,8 @@ static void* task_execute_func_Y(void* param) {
             rounds --;
         }
     }
+
+   __tst_follower_done__
 }
 
 static void* task_execute_func_Z(void* param) {
@@ -110,6 +119,8 @@ static void* task_execute_func_Z(void* param) {
             rounds --;
         }
     }
+
+    __tst_follower_done__
 }
 
 /**
@@ -120,13 +131,15 @@ void test_rlock_same_file_from_many_tasks() {
 __TST_START__
 
     int rt = -1;
-    const int r_siz = 256;
-    const int w_siz = 16;
+    const int r_siz = 1024;
+    const int w_siz = 512;
     tsk_id_t tid_x[w_siz];
     tsk_id_t tid_y[w_siz];
     tsk_id_t tid_z[w_siz];
     tsk_id_t tid_r[r_siz];
     int i = 0;
+
+    __tst_follower_init__
 
     for(i = 0; i < w_siz; i ++) {
         rt = task_create(&tid_x[i], task_execute_func_X);
@@ -142,23 +155,7 @@ __TST_START__
     }
     assert(rt == 0);
 
-    for(i = 0; i < w_siz; i ++) {
-        task_destroy(tid_x[i]);
-        printf("\t W_Task_X[%lu] Passed.\n", tid_x[i]);
-        fflush(stdout);
-        task_destroy(tid_y[i]);
-        printf("\t W_Task_Y[%lu] Passed.\n", tid_y[i]);
-        fflush(stdout);
-        task_destroy(tid_z[i]);
-        printf("\t W_Task_Z[%lu] Passed.\n", tid_z[i]);
-        fflush(stdout);
-    }
-
-    for(i = 0; i < r_siz; i ++) {
-        task_destroy(tid_r[i]);
-        printf("\t R_Task[%lu] Passed.\n", tid_r[i]);
-        fflush(stdout);
-    }
+    __tst_follower_wait__(4)
 
 __TST_PASSED__
 }

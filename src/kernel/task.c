@@ -50,7 +50,7 @@ __S_PURE__ task_struct_t* __task_alloc() {
 #if ARCH_CONF_SUB_TASK_ENABLE
     // Init task handle locks
 
-    __tsk->ts_handle_buckets->handle_rw_locks = (arch_rw_lock_t*) calloc(ARCH_VFS_FDS_BUCKETS_MAX, sizeof(arch_rw_lock_t));
+    __tsk->ts_handle_buckets->handle_rw_locks = (arch_rw_lock_t*) calloc(ARCH_VFS_FDS_MAX, sizeof(arch_rw_lock_t));
     if(!__tsk->ts_handle_buckets->handle_rw_locks) {
         fprintf(stderr, "task_alloc failed, ts_handle_buckets calloc error.\n");
         fflush(stderr);
@@ -58,7 +58,7 @@ __S_PURE__ task_struct_t* __task_alloc() {
         free(__tsk);
         return NULL;
     }
-    for(i = 0; i < ARCH_VFS_FDS_BUCKETS_MAX; i ++) {
+    for(i = 0; i < ARCH_VFS_FDS_MAX; i ++) {
         if(arch_rw_lock_init(&(__tsk->ts_handle_buckets->handle_rw_locks[i]))) {
             fprintf(stderr, "task_alloc failed, ts_handle_buckets calloc error.\n");
             fflush(stderr);

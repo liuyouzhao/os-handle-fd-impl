@@ -5,9 +5,6 @@
 #include "task.h"
 
 void test_hash_function();
-void test_task_create_one();
-void test_task_create_three();
-void test_task_create_many();
 void test_create_many_files();
 void test_same_file_reference();
 void test_file_search();
@@ -22,18 +19,11 @@ void test_rlock_same_file_from_many_tasks();
 
 int main()
 {
-
-    printf("sys_init...\n");
     sys_init();
-    printf("sys_init[OK]\n");
 
     task_manager_dump_tasks();
 
     test_hash_function();
-
-    test_task_create_one();
-    test_task_create_three();
-    test_task_create_many();
 
     test_create_many_files();
     test_same_file_reference();

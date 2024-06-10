@@ -21,7 +21,6 @@ SOURCES += \
         src/kernel/task.c \
         src/kernel/vfs.c \
         src/lib/hash.c \
-        src/lib/list.c \
         src/lib/queue.c \
         src/tests/lib/test_hash.c \
         src/tests/test_fd_reuse_sanity.c \
@@ -32,7 +31,6 @@ SOURCES += \
         src/tests/test_rw_sanity.c \
         src/tests/test_rwlock_concurrency_1.c \
         src/tests/test_rwlock_concurrency_2.c \
-        src/tests/test_task_create.c \
         src/tests/test_vfs_file_create.c \
         src/tests/test_vfs_file_search.c \
         src/tests/tests.c

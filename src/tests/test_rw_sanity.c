@@ -7,6 +7,8 @@
 #include "task.h"
 #include "test_def.h"
 
+__tst_define__
+
 #define __TEST_BUF_SIZ 256
 
 static void* exec_single_write_then_read(void* param) {
@@ -21,13 +23,11 @@ static void* exec_single_write_then_read(void* param) {
     sys_write(tid, fd, buf_write, strlen(buf_write), 0);
 
     assert(sys_read(tid, fd, buf_read, __TEST_BUF_SIZ, &pos) > 0);
-
-    printf("%s\n", buf_read);
-    fflush(stdout);
-
     assert(strcmp(buf_write, buf_read) == 0);
     assert(sys_close(tid, fd) == 0);
 
+    __tst_follower_done__
+    return NULL;
 }
 
 static void* exec_loop_write_then_read_no_offset(void* param) {
@@ -47,6 +47,9 @@ static void* exec_loop_write_then_read_no_offset(void* param) {
         expect_pos += rt;
         assert(expect_pos == pos);
     }
+
+    __tst_follower_done__
+    return NULL;
 }
 
 static void* exec_loop_write_then_read_with_offset(void* param) {
@@ -73,6 +76,9 @@ static void* exec_loop_write_then_read_with_offset(void* param) {
         expect_pos += rt;
         assert(expect_pos == pos);
     }
+
+    __tst_follower_done__
+    return NULL;
 }
 
 static void* exec_loop_write_then_read_with_offset_2(void* param) {
@@ -98,6 +104,9 @@ static void* exec_loop_write_then_read_with_offset_2(void* param) {
         expect_pos += rt;
         assert(expect_pos == pos);
     }
+
+    __tst_follower_done__
+    return NULL;
 }
 
 static void* exec_loop_write_close_then_read(void* param) {
@@ -156,6 +165,9 @@ static void* exec_loop_write_close_then_read(void* param) {
         expect_pos += rt;
         assert(expect_pos == pos);
     }
+
+    __tst_follower_done__
+    return NULL;
 }
 
 
@@ -165,25 +177,24 @@ void test_read_write_single_task_sanity() {
     tsk_id_t _tid;
     int rt = -1;
 
+    __tst_follower_init__
+
     rt = task_create(&_tid, exec_single_write_then_read);
     assert(rt == 0);
-    task_destroy(_tid);
 
     rt = task_create(&_tid, exec_loop_write_then_read_no_offset);
     assert(rt == 0);
-    task_destroy(_tid);
 
     rt = task_create(&_tid, exec_loop_write_then_read_with_offset);
     assert(rt == 0);
-    task_destroy(_tid);
 
     rt = task_create(&_tid, exec_loop_write_then_read_with_offset_2);
     assert(rt == 0);
-    task_destroy(_tid);
 
     rt = task_create(&_tid, exec_loop_write_close_then_read);
     assert(rt == 0);
-    task_destroy(_tid);
+
+    __tst_follower_wait__(5)
 
     __TST_PASSED__
 }
