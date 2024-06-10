@@ -104,7 +104,7 @@ static void* exec_loop_write_then_read_with_offset_2(void* param) {
         expect_pos += rt;
         assert(expect_pos == pos);
     }
-
+    sys_close(tid, fd);
     __tst_follower_done__
     return NULL;
 }
@@ -165,7 +165,8 @@ static void* exec_loop_write_close_then_read(void* param) {
         expect_pos += rt;
         assert(expect_pos == pos);
     }
-
+    sys_close(tid, fd11);
+    sys_close(tid, fd22);
     __tst_follower_done__
     return NULL;
 }

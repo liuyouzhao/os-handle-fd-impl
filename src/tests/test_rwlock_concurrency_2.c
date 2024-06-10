@@ -46,7 +46,7 @@ static void* task_execute_read(void* param) {
         sys_seek(tid, fd, 0);
         expect_pos = 0;
     }
-
+    sys_close(tid, fd);
     __tst_follower_done__
 }
 
@@ -69,7 +69,7 @@ static void* task_execute_func_X(void* param) {
             rounds --;
         }
     }
-
+    sys_close(tid, fd);
     __tst_follower_done__
 }
 
@@ -91,7 +91,7 @@ static void* task_execute_func_Y(void* param) {
             rounds --;
         }
     }
-
+    sys_close(tid, fd);
     __tst_follower_done__
 }
 
@@ -114,7 +114,7 @@ static void* task_execute_func_Z(void* param) {
             rounds --;
         }
     }
-
+    sys_close(tid, fd);
     __tst_follower_done__
 }
 

@@ -372,11 +372,119 @@ Task1     Task2    Task3    Task4 ..
 [   Kernel structure (vfs_handle, vfs_file...) ]
 
 
-For now, each task is one pthread on linux. The tasks are m
+For now, each task is one pthread on linux. The tasks are management by task_manager in a fixed array.
+Linux by default has maximum process number of 32768, means the maximum number of tasks is not really big.
+But using a dynamic array will be much better.
 
 
+2. Other Significant Concerns
+
+2.1 Better data structure.
+
+All directly indexed linear structure should be Dynamically Growing Array.
+This will save the memory during intitial stages and the searching time cost is still low.
+
+2.2 Asynchroniously store un-used memory(buckets/handles) into cache.
+ 
+In this system, there are 2 places using calloc which is slower than malloc and keep it dirty.
+However, in real scenarios, these memory will not be released very frequently. Once allocated, system should
+keep it as re-usable. Because this memory management system is complex, this assignment did not implement this part.
+
+2.3 More Benchmark and Performance testing.
+
+In actual projects, better benchmark and performance toolkits and libs must be developed or involved.
 
 
+3. Code & Project
+
+3.1 Folders
+└── src
+    ├── arch
+    │   └── linux
+    │       └── arch.c
+    ├── include
+    │   ├── arch
+    │   │   └── linux
+    │   │       └── arch.h
+    │   ├── kernel
+    │   │   ├── defs.h
+    │   │   ├── sys.h
+    │   │   ├── task.h
+    │   │   └── vfs.h
+    │   └── lib
+    │       ├── atomic.h
+    │       ├── hash.h
+    │       └── queue.h
+    ├── kernel
+    │   ├── sys.c
+    │   ├── task.c
+    │   └── vfs.c
+    ├── lib
+    │   ├── hash.c
+    │   └── queue.c
+    └── tests
+        ├── lib
+        │   └── test_hash.c
+        ├── test_def.h
+        ├── test_fd_reuse_sanity.c
+        ├── test_open_close_concurrency.c
+        ├── test_r1w3_subtasks_1.c
+        ├── test_r1w3_subtasks_2.c
+        ├── test_rlock_concurrency_1.c
+        ├── test_rwlock_concurrency_1.c
+        ├── test_rwlock_concurrency_2.c
+        ├── test_rw_sanity.c
+        ├── tests.c
+        ├── test_vfs_file_create.c
+        └── test_vfs_file_search.c
+
+All code files are in src, kernel folder has the major code.
+sys.c open/read/write/close 
+vfs.c file/handle 
+task.c task/task_manager 
+
+3.2 Build & Tests
+Use make command under the project folder.
+
+make
+
+Then run main for tests.
+
+./main
+
+Or call benchmark
+
+strace ./main
+
+% time     seconds  usecs/call     calls    errors syscall
+------ ----------- ----------- --------- --------- ----------------
+ 35.34    1.199688         331      3620           mmap
+ 21.16    0.718290         199      3610           mprotect
+ 16.43    0.557619         303      1843           brk
+ 16.17    0.548928         152      3606           clone
+ 10.87    0.368868       16038        23           clock_nanosleep
+  0.02    0.000717          29        25           write
+  0.00    0.000066          17         4           futex
+  0.00    0.000050          50         1           munmap
+  0.00    0.000017           4         4           fstat
+  0.00    0.000015           8         2           rt_sigaction
+  0.00    0.000015          15         1           rt_sigprocmask
+  0.00    0.000015           8         2         1 arch_prctl
+  0.00    0.000015          15         1           prlimit64
+  0.00    0.000000           0         2           read
+  0.00    0.000000           0         3           close
+  0.00    0.000000           0         8           pread64
+  0.00    0.000000           0         1         1 access
+  0.00    0.000000           0         1           execve
+  0.00    0.000000           0         1           set_tid_address
+  0.00    0.000000           0         3           openat
+  0.00    0.000000           0         1           set_robust_list
+------ ----------- ----------- --------- --------- ----------------
+100.00    3.394303                 12762         2 total
+
+
+The tests will overall start 2000 tasks, trustling tests include 10k read&write per task.
+See test_rlock_concurrency_1.c::test_rlock_same_file_from_many_tasks
 
 
 

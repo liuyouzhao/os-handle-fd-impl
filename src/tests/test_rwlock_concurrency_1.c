@@ -51,6 +51,8 @@ static void* task_execute_read(void* param) {
         usleep(1000 * 100);
     }
 
+    sys_close(tid, fd);
+
     __tst_follower_done__
 
     return NULL;
@@ -69,6 +71,8 @@ static void* task_execute_func_X(void* param) {
         /// wait 10ms
         usleep(1000 * 15);
     }
+
+    sys_close(tid, fd);
 
     __tst_follower_done__
 
@@ -89,6 +93,7 @@ static void* task_execute_func_Y(void* param) {
         usleep(1000 * 12);
     }
 
+    sys_close(tid, fd);
     __tst_follower_done__
 
     return NULL;
@@ -107,6 +112,8 @@ static void* task_execute_func_Z(void* param) {
         /// wait 10ms
         usleep(1000 * 10);
     }
+
+    sys_close(tid, fd);
 
     __tst_follower_done__
 

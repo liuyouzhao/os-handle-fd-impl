@@ -59,7 +59,7 @@ static void* task_execute_read(void* param) {
         expect_pos = 0;
         usleep(1000 * 200);
     }
-
+    sys_close(tid, cross_fd_check);
     __tst_follower_done__
 }
 
@@ -87,7 +87,7 @@ static void* task_execute_func_X(void* param) {
         }
         usleep(11);
     }
-
+    sys_close(tid, fd);
     __tst_follower_done__
 }
 
@@ -117,7 +117,7 @@ static void* task_execute_func_Y(void* param) {
         }
         usleep(10);
     }
-
+    sys_close(tid, cross_fd_check);
     __tst_follower_done__
 }
 
@@ -147,7 +147,7 @@ static void* task_execute_func_Z(void* param) {
         }
         usleep(10);
     }
-
+    sys_close(tid, cross_fd_check);
     __tst_follower_done__
 }
 

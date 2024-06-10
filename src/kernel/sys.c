@@ -296,6 +296,9 @@ int sys_seek(tsk_id_t tid, int fd, unsigned long pos) {
     task = task_manager_get_task(tid);
     ptr_ptr_handle = __search_handle(task, fd);
 
+    if( !ptr_ptr_handle || !(*ptr_ptr_handle) ) {
+        return -1;
+    }
     arch_spin_lock(&((*ptr_ptr_handle)->read_pos_lock));
     (*ptr_ptr_handle)->read_pos = pos;
     arch_spin_unlock(&((*ptr_ptr_handle)->read_pos_lock));

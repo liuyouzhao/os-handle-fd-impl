@@ -32,6 +32,10 @@ static void* single_task_open_close_fd_reuse(void* param) {
         assert(tmp_fd == fds[i]);
     }
 
+    /// Close first half of test_fds
+    for(i = 0; i < (test_fds >> 1); i ++) {
+        sys_close(tid, fds[i]);
+    }
     __tst_follower_done__
 
     return NULL;
