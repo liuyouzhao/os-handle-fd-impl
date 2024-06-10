@@ -180,10 +180,10 @@ On another thread, `if(ptr)` will return either `true` as `ptr` has value or `fa
 Tasks   sub-tasks   Buckets     Handles
 task1
 	|sub-task1| -> |bucket1| -> [fd0] -> [fd1] -> ... -> [fdk]
-                   |bucket2| -> [fdk+1] -> .. -> [fdn]
+                       |bucket2| -> [fdk+1] -> .. -> [fdn]
 		        ...
 	|sub-task2| -> |bucket1| -> [fd0]
-		           |bucket2<rw_lock>| -> nil
+	               |bucket2<rw_lock>| -> nil
                                 |
                               lock
 ```
@@ -211,10 +211,10 @@ Investing handle level rw_locks.
 Tasks  sub-tasks    Buckets      Handles        lock_w
 task1                                   |
 	|sub-task1| -> |bucket1| -> [fd0<rw_lock>] -> [fd1] -> ... -> [fdk]
-		           |bucket2| -> [fdk+1] -> ..  -> [fdn]
+                       |bucket2| -> [fdk+1] -> ..  -> [fdn]
 		        ...
 	|sub-task2| -> |bucket1| -> [fd0]
-		           |bucket2| -> nil
+	               |bucket2| -> nil
 ```
 When changing a handle's fields, `lock_w` the `rw_lock` on handle-lock level.
 Will this cause fd search performance loss? No, why? 
